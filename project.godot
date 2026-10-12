@@ -25,6 +25,8 @@ config/icon="uid://bcc1otbed6n1d"
 GameState="*res://autoload/GameState.gd"
 DataManager="*res://autoload/DataManager.gd"
 Design="*uid://dbywptlvdek3g"
+AudioManager="*uid://vyf7w4y3r8c8"
+Navigation="*uid://0b7w3x3pfxqa"
 
 [display]
 
