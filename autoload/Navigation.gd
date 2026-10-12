@@ -5,6 +5,7 @@ extends Node
 # we can add transitions later without touching every screen.
 
 const HOME := "res://scenes/Home.tscn"
+const PLAYER_SETUP := "res://scenes/PlayerSetup.tscn"
 
 var current_path: String = ""
 

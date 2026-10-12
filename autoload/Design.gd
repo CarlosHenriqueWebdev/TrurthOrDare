@@ -22,6 +22,7 @@ const FIVE                  := Color("#304e64")
 const SIX                   := Color("#211f2d")
 const SEVEN                 := Color("#ca7564")
 const EIGHT                 := Color("#f5b061")
+const DISABLED := Color("#373737")
 
 # --- Layout ---
 const SIDE_PADDING     := 16
@@ -60,6 +61,11 @@ const ICON_CLOSE     := "res://assets/icons/close.svg"
 const ICON_HOUSE     := "res://assets/icons/house.svg"
 const MUSIC_PATH     := "res://assets/audio/music.mp3"
 const SFX_CLICK_PATH := "res://assets/audio/click.mp3"
+const PLAYER_BG_PATH  := "res://assets/PlayerSetupBackground.png"
+const AVATARS_DIR     := "res://assets/avatars/"
+const ICON_DICE       := "res://assets/icons/dice.svg"
+const ICON_SEND       := "res://assets/icons/send.svg"
+const ICON_REMOVE     := "res://assets/icons/remove.svg"
 
 # Cached font resources (loaded once at startup).
 var font: FontFile

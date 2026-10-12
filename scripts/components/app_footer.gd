@@ -2,14 +2,11 @@ class_name AppFooter extends VBoxContainer
 
 # Bottom action bar. Buttons declared via config array; emits `button_pressed(id)`.
 # Config entry: {"id": String, "text": String, "color": Color, "icon": String (optional)}
-# Usage:
-#   var f := AppFooter.create([
-#       {"id": "preview", "text": "PREVIEW", "color": Design.PRIMARY, "icon": Design.ICON_SEARCH},
-#       {"id": "start", "text": "START GAME", "color": Design.SECONDARY},
-#   ])
-#   f.button_pressed.connect(_on_footer_button)
+# Reach a button with get_button(id) to toggle its disabled state.
 
 signal button_pressed(id: String)
+
+var _buttons: Dictionary = {}
 
 
 static func create(buttons: Array) -> AppFooter:
@@ -53,3 +50,8 @@ func _build(buttons: Array) -> void:
 		var btn := StyledButton.create(text, color, icon)
 		btn.pressed.connect(func(): button_pressed.emit(id))
 		col.add_child(btn)
+		_buttons[id] = btn
+
+
+func get_button(id: String) -> StyledButton:
+	return _buttons.get(id)

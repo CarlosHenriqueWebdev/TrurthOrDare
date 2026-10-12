@@ -1,27 +1,24 @@
 class_name SettingsPanel extends VBoxContainer
 
-# Settings content column — title, close button, music/SFX toggles.
-# Emits `close_requested` when the user taps the X. The host screen
-# connects that to whatever "close" means in context (e.g. Modal.close).
+# Settings content. Emits `close_requested` when the user taps X, and
+# `back_to_menu_requested` when the optional return button is tapped.
 #
-# Usage:
-#   var panel := SettingsPanel.create()
-#   panel.close_requested.connect(_settings_modal.close)
-#   _settings_modal.set_content(panel)
+# Pass show_back_to_menu = true on screens where returning to the main menu
+# is meaningful (i.e. anywhere except Home).
 
 signal close_requested
+signal back_to_menu_requested
 
 
-static func create() -> SettingsPanel:
+static func create(show_back_to_menu := false) -> SettingsPanel:
 	var p := SettingsPanel.new()
-	p._build()
+	p._build(show_back_to_menu)
 	return p
 
 
-func _build() -> void:
+func _build(show_back_to_menu: bool) -> void:
 	add_theme_constant_override("separation", 0)
 
-	# --- Title row: SETTINGS + X ---
 	var title_row := HBoxContainer.new()
 	add_child(title_row)
 
@@ -49,7 +46,6 @@ func _build() -> void:
 
 	add_child(_make_spacer(16))
 
-	# --- Music ---
 	add_child(_make_section_label("Music"))
 	add_child(_make_spacer(12))
 	var music_tg := ToggleGroup.create(AudioManager.music_enabled)
@@ -58,21 +54,17 @@ func _build() -> void:
 
 	add_child(_make_spacer(16))
 
-	# --- Sound Effect ---
 	add_child(_make_section_label("Sound Effect"))
 	add_child(_make_spacer(12))
 	var sfx_tg := ToggleGroup.create(AudioManager.sfx_enabled)
 	sfx_tg.changed.connect(func(is_on): AudioManager.set_sfx_enabled(is_on))
 	add_child(sfx_tg)
 
-	add_child(_make_spacer(16))
-
-	# Hidden until navigation exists — will be re-enabled per screen that
-	# needs a "back to menu" affordance inside settings.
-	var back_btn := StyledButton.create("GO BACK TO MENU", Design.SECONDARY, Design.ICON_HOUSE)
-	back_btn.pressed.connect(func(): close_requested.emit())
-	back_btn.visible = false
-	add_child(back_btn)
+	if show_back_to_menu:
+		add_child(_make_spacer(16))
+		var back_btn := StyledButton.create("GO BACK TO MENU", Design.TERTIARY, Design.ICON_HOUSE)
+		back_btn.pressed.connect(func(): back_to_menu_requested.emit())
+		add_child(back_btn)
 
 
 func _on_close_input(event: InputEvent) -> void:

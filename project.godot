@@ -27,6 +27,7 @@ DataManager="*res://autoload/DataManager.gd"
 Design="*uid://dbywptlvdek3g"
 AudioManager="*uid://vyf7w4y3r8c8"
 Navigation="*uid://0b7w3x3pfxqa"
+ToastManager="*uid://b5gqnlarvfiul"
 
 [display]
 
