@@ -1,11 +1,11 @@
 extends Node
 
 # Global toast overlay. Screens call ToastManager.show_message("...").
-# Renders a small bordered panel near the bottom of the screen, fades in,
-# holds, fades out. Only one toast visible at a time.
+# Pass is_error = true for the red-border variant.
 
 var _layer: CanvasLayer
 var _current: Control
+var _current_tween: Tween
 
 
 func _ready() -> void:
@@ -14,13 +14,14 @@ func _ready() -> void:
 	add_child(_layer)
 
 
-func show_message(text: String, duration := 2.0) -> void:
-	# Cancel existing toast so rapid messages don't stack.
+func show_message(text: String, duration := 2.0, is_error := false) -> void:
+	# Cancel previous
+	if _current_tween and _current_tween.is_valid():
+		_current_tween.kill()
 	if is_instance_valid(_current):
 		_current.queue_free()
 		_current = null
 
-	# Center-strip anchored near the bottom, above where footers sit.
 	var strip := CenterContainer.new()
 	strip.anchor_left = 0.0
 	strip.anchor_right = 1.0
@@ -31,6 +32,9 @@ func show_message(text: String, duration := 2.0) -> void:
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layer.add_child(strip)
 
+	var border_color := Design.TERTIARY if is_error else Design.GLOBAL_CONTENT_BORDER
+	var text_color := Design.TERTIARY if is_error else Design.WHITE
+
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
@@ -39,7 +43,7 @@ func show_message(text: String, duration := 2.0) -> void:
 	sb.border_width_top    = 2
 	sb.border_width_right  = 2
 	sb.border_width_bottom = 2
-	sb.border_color = Design.GLOBAL_CONTENT_BORDER
+	sb.border_color = border_color
 	sb.corner_radius_top_left     = 8
 	sb.corner_radius_top_right    = 8
 	sb.corner_radius_bottom_left  = 8
@@ -53,7 +57,7 @@ func show_message(text: String, duration := 2.0) -> void:
 
 	var lbl := Label.new()
 	lbl.text = text
-	Design.apply_label(lbl, 12, Design.WHITE)
+	Design.apply_label(lbl, 12, text_color)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(lbl)
@@ -61,13 +65,16 @@ func show_message(text: String, duration := 2.0) -> void:
 	_current = strip
 	strip.modulate.a = 0.0
 
-	var tw := create_tween()
-	tw.tween_property(strip, "modulate:a", 1.0, 0.15)
-	tw.tween_interval(duration)
-	tw.tween_property(strip, "modulate:a", 0.0, 0.3)
-	tw.tween_callback(func():
-		if is_instance_valid(strip):
-			strip.queue_free()
-		if _current == strip:
-			_current = null
-	)
+	_current_tween = create_tween()
+	_current_tween.tween_property(strip, "modulate:a", 1.0, 0.15)
+	_current_tween.tween_interval(duration)
+	_current_tween.tween_property(strip, "modulate:a", 0.0, 0.3)
+	_current_tween.tween_callback(_clear_toast.bind(strip))
+
+
+func _clear_toast(strip: Control) -> void:
+	if is_instance_valid(strip):
+		strip.queue_free()
+	if _current == strip:
+		_current = null
+		_current_tween = null

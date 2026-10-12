@@ -32,7 +32,7 @@ ToastManager="*uid://b5gqnlarvfiul"
 [display]
 
 window/size/viewport_width=390
-window/size/viewport_height=650
+window/size/viewport_height=844
 window/size/resizable=false
 window/size/transparent=true
 window/stretch/mode="canvas_items"

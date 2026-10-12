@@ -8,6 +8,9 @@ class_name StyledButton extends Button
 #   compact  -> small variant: font 9, padding 10, icon 16 (used with hug)
 
 var _bg_color: Color
+# Set true to prevent auto-wired click SFX (used when the button
+# should play a success/error sound instead).
+var suppress_click_sound := false
 
 
 static func create(
@@ -147,6 +150,12 @@ func set_disabled_visual(is_disabled: bool) -> void:
 	_apply_style(is_disabled)
 	if is_disabled:
 		scale = Vector2.ONE
+
+
+# Change the base fill color while respecting the current disabled state.
+func set_bg_color(color: Color) -> void:
+	_bg_color = color
+	_apply_style(disabled)
 
 
 static func _animate_scale(node: Control, target: float, time: float) -> void:

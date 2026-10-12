@@ -1,24 +1,25 @@
 extends Node
 
-# Central audio. Owns the music player and the click SFX pool.
-# Components and screens never touch AudioStreamPlayer directly — they call
-# AudioManager.play_click(), and settings UIs toggle music/sfx here.
+# Central audio. Music player + pools of one-shot SFX players.
+# Pools let rapid sounds layer instead of cutting each other off.
 #
-# Why a pool for SFX: a single AudioStreamPlayer can only play one instance
-# at a time. Cycling 4 players lets rapid clicks layer instead of cutting
-# each other off.
+# Public API: play_click(), play_error(), play_success().
 
 signal music_toggled(is_on: bool)
 signal sfx_toggled(is_on: bool)
 
-const SFX_POOL_SIZE := 4
+const POOL_SIZE := 4
 
 var music_enabled := true
 var sfx_enabled := true
 
 var _music_player: AudioStreamPlayer
-var _sfx_players: Array[AudioStreamPlayer] = []
-var _sfx_index := 0
+var _click_players: Array[AudioStreamPlayer] = []
+var _error_players: Array[AudioStreamPlayer] = []
+var _success_players: Array[AudioStreamPlayer] = []
+var _click_index := 0
+var _error_index := 0
+var _success_index := 0
 
 
 func _ready() -> void:
@@ -43,25 +44,48 @@ func _setup_music() -> void:
 
 
 func _setup_sfx() -> void:
-	if not ResourceLoader.exists(Design.SFX_CLICK_PATH):
-		push_warning("Click SFX not found: " + Design.SFX_CLICK_PATH)
-		return
-	var stream := load(Design.SFX_CLICK_PATH)
-	for i in SFX_POOL_SIZE:
+	_click_players   = _make_pool(Design.SFX_CLICK_PATH,   -6.0)
+	_error_players   = _make_pool(Design.SFX_ERROR_PATH,   -6.0)
+	_success_players = _make_pool(Design.SFX_SUCCESS_PATH, -6.0)
+
+
+func _make_pool(path: String, volume_db: float) -> Array[AudioStreamPlayer]:
+	var out: Array[AudioStreamPlayer] = []
+	if not ResourceLoader.exists(path):
+		push_warning("SFX not found: " + path)
+		return out
+	var stream := load(path)
+	for i in POOL_SIZE:
 		var p := AudioStreamPlayer.new()
 		p.stream = stream
-		p.volume_db = -6.0
+		p.volume_db = volume_db
 		add_child(p)
-		_sfx_players.append(p)
+		out.append(p)
+	return out
 
 
 # Public API -----------------------------------------------------------
 
 func play_click() -> void:
-	if not sfx_enabled or _sfx_players.is_empty():
+	_play_pool(_click_players, "click")
+
+func play_error() -> void:
+	_play_pool(_error_players, "error")
+
+func play_success() -> void:
+	_play_pool(_success_players, "success")
+
+
+func _play_pool(players: Array[AudioStreamPlayer], kind: String) -> void:
+	if not sfx_enabled or players.is_empty():
 		return
-	var p := _sfx_players[_sfx_index]
-	_sfx_index = (_sfx_index + 1) % _sfx_players.size()
+	var idx: int
+	match kind:
+		"click":   idx = _click_index;   _click_index   = (_click_index   + 1) % players.size()
+		"error":   idx = _error_index;   _error_index   = (_error_index   + 1) % players.size()
+		"success": idx = _success_index; _success_index = (_success_index + 1) % players.size()
+		_: return
+	var p := players[idx]
 	p.stop()
 	p.play()
 

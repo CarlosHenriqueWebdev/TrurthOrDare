@@ -14,6 +14,9 @@ var _player_list_box: BorderedBox
 var _randomize_btn: StyledButton
 var _start_btn: StyledButton
 var _settings_modal: Modal
+var _add_error := false
+var _hint_label: Label
+var _player_count_label: Label
 
 
 func _ready() -> void:
@@ -22,9 +25,18 @@ func _ready() -> void:
 	_refresh()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _name_input and _name_input.has_focus():
+			_name_input.release_focus()
+
+
 func _connect_click_sounds(node: Node) -> void:
 	for child in node.get_children():
-		if child is Button:
+		if child is StyledButton:
+			if not child.suppress_click_sound:
+				child.pressed.connect(AudioManager.play_click)
+		elif child is Button:
 			child.pressed.connect(AudioManager.play_click)
 		_connect_click_sounds(child)
 
@@ -64,8 +76,6 @@ func _build() -> void:
 
 	content_col.add_child(_build_add_player_box())
 	content_col.add_child(_build_player_list_box())
-
-	# Bottom breathing room so the last row can scroll clear of the footer.
 	content_col.add_child(_spacer(24))
 
 	root.add_child(_spacer(SECTION_GAP))
@@ -79,6 +89,8 @@ func _build() -> void:
 
 	_randomize_btn = footer.get_button("randomize")
 	_start_btn     = footer.get_button("start")
+	if _randomize_btn:
+		_randomize_btn.suppress_click_sound = true
 
 	_settings_modal = Modal.create()
 	var settings_panel := SettingsPanel.create(true)
@@ -86,11 +98,6 @@ func _build() -> void:
 	settings_panel.back_to_menu_requested.connect(_on_back_to_menu)
 	_settings_modal.set_content(settings_panel)
 	add_child(_settings_modal)
-
-
-func _on_back_to_menu() -> void:
-	_settings_modal.close()
-	Navigation.go_home()
 
 
 func _build_background() -> void:
@@ -113,9 +120,7 @@ func _build_background() -> void:
 func _build_add_player_box() -> BorderedBox:
 	var box := BorderedBox.create()
 
-	# Title row: ADD PLAYERS ........ Enter at least 2 players
 	var title_row := HBoxContainer.new()
-
 	var title := Label.new()
 	title.text = "ADD PLAYERS"
 	Design.apply_label(title, Design.FONT_SIZE_TITLE)
@@ -127,11 +132,11 @@ func _build_add_player_box() -> BorderedBox:
 	t_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_row.add_child(t_spacer)
 
-	var hint := Label.new()
-	hint.text = "Enter at least 2 players"
-	Design.apply_label(hint, 10, Design.GRAY)
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_row.add_child(hint)
+	_hint_label = Label.new()
+	_hint_label.text = "Enter at least 2 players"
+	Design.apply_label(_hint_label, 10, Design.TERTIARY)
+	_hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_row.add_child(_hint_label)
 
 	box.add_with_margins(title_row, 16, 16, 16, 0)
 
@@ -139,7 +144,9 @@ func _build_add_player_box() -> BorderedBox:
 	box.add_full(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))
 	box.add_spacer(16)
 
-	# Input row: LineEdit + ADD PLAYER button
+	var input_col := VBoxContainer.new()
+	input_col.add_theme_constant_override("separation", 8)
+
 	var input_row := HBoxContainer.new()
 	input_row.add_theme_constant_override("separation", 12)
 
@@ -148,17 +155,28 @@ func _build_add_player_box() -> BorderedBox:
 	_name_input.max_length = NAME_MAX_LENGTH
 	_name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name_input.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_style_line_edit(_name_input)
-	_name_input.text_submitted.connect(func(_t): _on_add_player())
+	_style_line_edit_bare(_name_input)
+	_name_input.text_submitted.connect(_on_name_submitted)
+	_name_input.text_changed.connect(_on_name_changed)
+	_name_input.focus_entered.connect(_on_input_focus)
+	_name_input.focus_exited.connect(_on_input_blur)
 	input_row.add_child(_name_input)
 
-	_add_player_btn = StyledButton.create("ADD PLAYER", Design.PRIMARY, Design.ICON_SEND, 32, true, true)
+	_add_player_btn = StyledButton.create("ADD PLAYER", Design.FIVE, Design.ICON_SEND, 32, true, true)
+	_add_player_btn.suppress_click_sound = true
 	_add_player_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_add_player_btn.pressed.connect(_on_add_player)
 	input_row.add_child(_add_player_btn)
-	print("btn min size: ", _add_player_btn.get_combined_minimum_size())
 
-	box.add_with_margins(input_row, 16, 0, 16, 16)
+	input_col.add_child(input_row)
+
+	var underline := ColorRect.new()
+	underline.color = Design.GRAY
+	underline.custom_minimum_size = Vector2(0, 2)
+	underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	input_col.add_child(underline)
+
+	box.add_with_margins(input_col, 16, 0, 16, 16)
 
 	return box
 
@@ -166,17 +184,30 @@ func _build_add_player_box() -> BorderedBox:
 func _build_player_list_box() -> BorderedBox:
 	_player_list_box = BorderedBox.create()
 
+	var title_row := HBoxContainer.new()
+
 	var title := Label.new()
 	title.text = "PLAYER LIST"
 	Design.apply_label(title, 12)
-	_player_list_box.add_with_margins(title, 16, 16, 16, 0)
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_row.add_child(title)
+
+	var t_spacer := Control.new()
+	t_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	t_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_row.add_child(t_spacer)
+
+	_player_count_label = Label.new()
+	_player_count_label.text = "0 / %d" % MAX_PLAYERS
+	Design.apply_label(_player_count_label, 10, Design.GRAY)
+	_player_count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_row.add_child(_player_count_label)
+
+	_player_list_box.add_with_margins(title_row, 16, 16, 16, 0)
 
 	_player_list_box.add_spacer(16)
 	_player_list_box.add_full(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))
-	_player_list_box.add_spacer(16)
 
-	# Rows container has no padding — dividers between rows need to reach
-	# the border. Each row is padded individually.
 	_player_rows_container = VBoxContainer.new()
 	_player_rows_container.add_theme_constant_override("separation", 0)
 	_player_list_box.add_full(_player_rows_container)
@@ -209,72 +240,142 @@ func _rebuild_player_rows() -> void:
 		_player_rows_container.add_child(row_wrap)
 
 		if i < _players.size() - 1:
-			_player_rows_container.add_child(_spacer(16))
 			_player_rows_container.add_child(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))
-			_player_rows_container.add_child(_spacer(16))
 
-	# Bottom padding inside the box
-	_player_rows_container.add_child(_spacer(16))
+	# No trailing spacer — the box's bottom edge sits right under the last row.
 
 
 func _update_controls() -> void:
-	var has_players := _players.size() > 0
 	var at_max := _players.size() >= MAX_PLAYERS
+	var enough := _players.size() >= 2
 
 	if _add_player_btn:
 		_add_player_btn.set_disabled_visual(at_max)
 	if _name_input:
 		_name_input.editable = not at_max
 	if _randomize_btn:
-		_randomize_btn.set_disabled_visual(not has_players)
+		_randomize_btn.set_disabled_visual(not enough)
 	if _start_btn:
-		_start_btn.set_disabled_visual(not has_players)
+		_start_btn.set_disabled_visual(not enough)
+
+	if _hint_label:
+		_hint_label.add_theme_color_override(
+			"font_color",
+			Design.GLOBAL_CONTENT_BORDER if enough else Design.TERTIARY
+		)
+	if _player_count_label:
+		_player_count_label.text = "%d / %d" % [_players.size(), MAX_PLAYERS]
+
+
+func _refresh_add_button_color() -> void:
+	if _add_player_btn:
+		var color := Design.TERTIARY if _add_error else Design.FIVE
+		_add_player_btn.set_bg_color(color)
+
+
+# =====================================================================
+# INPUT FOCUS
+# =====================================================================
+func _on_input_focus() -> void:
+	_name_input.placeholder_text = ""
+
+func _on_input_blur() -> void:
+	if _name_input.text.is_empty():
+		_name_input.placeholder_text = "Player Name..."
 
 
 # =====================================================================
 # ACTIONS
 # =====================================================================
+func _on_name_submitted(_text: String) -> void:
+	_on_add_player()
+
+func _on_name_changed(_text: String) -> void:
+	if _add_error:
+		_add_error = false
+		_refresh_add_button_color()
+
+
 func _on_add_player() -> void:
 	if _players.size() >= MAX_PLAYERS:
-		ToastManager.show_message("Player limit reached")
+		_show_add_error("Player limit reached")
 		return
 	var raw := _name_input.text.strip_edges()
 	if raw.is_empty():
-		ToastManager.show_message("Enter a player name")
+		_show_add_error("Enter a player name")
+		return
+	if not _starts_with_letter(raw):
+		_show_add_error("Name must start with a letter")
 		return
 	if raw.length() > NAME_MAX_LENGTH:
-		ToastManager.show_message("Name too long (max %d)" % NAME_MAX_LENGTH)
+		_show_add_error("Name too long (max %d)" % NAME_MAX_LENGTH)
 		return
 	for p in _players:
 		if p.to_lower() == raw.to_lower():
-			ToastManager.show_message("Player already added")
+			_show_add_error("Player already added")
 			return
-	_players.append(raw)
+
+	_players.append(_format_name(raw))
 	_name_input.text = ""
 	_name_input.grab_focus()
+	_add_error = false
+	_refresh_add_button_color()
 	_refresh()
+	AudioManager.play_success()
+	ToastManager.show_message("Added " + raw)
 
 
 func _on_remove_player(index: int) -> void:
 	if index < 0 or index >= _players.size():
 		return
+	var removed := _players[index]
 	_players.remove_at(index)
 	_refresh()
+	AudioManager.play_success()
+	ToastManager.show_message("Removed " + removed)
 
 
 func _on_footer_button(id: String) -> void:
 	match id:
 		"randomize":
-			if _players.is_empty():
-				return
-			_players.shuffle()
-			_refresh()
+			_randomize_order()
 		"start":
 			if _players.size() < 2:
-				ToastManager.show_message("Need at least 2 players")
+				AudioManager.play_error()
+				ToastManager.show_message("Need at least 2 players", 2.0, true)
 				return
 			# TODO: navigate to Game scene once it exists
 			print("Start game with: ", _players)
+
+
+func _randomize_order() -> void:
+	if _players.size() < 2:
+		return
+	var original := _players.duplicate()
+	var result := original.duplicate()
+
+	# Try random shuffles until no element keeps its old position.
+	# Falls back to a rotation (always a valid derangement).
+	var ok := false
+	for attempt in 50:
+		result.shuffle()
+		ok = true
+		for i in result.size():
+			if result[i] == original[i]:
+				ok = false
+				break
+		if ok:
+			break
+
+	if not ok:
+		result.clear()
+		for i in original.size():
+			result.append(original[(i + 1) % original.size()])
+
+	_players = result
+	_refresh()
+	AudioManager.play_success()
+	ToastManager.show_message("Player order shuffled")
 
 
 func _on_settings_pressed() -> void:
@@ -282,10 +383,52 @@ func _on_settings_pressed() -> void:
 	_settings_modal.open()
 
 
+func _on_back_to_menu() -> void:
+	_settings_modal.close()
+	Navigation.go_home()
+
+
 # =====================================================================
 # HELPERS
 # =====================================================================
-func _style_line_edit(le: LineEdit) -> void:
+func _show_add_error(msg: String) -> void:
+	AudioManager.play_error()
+	ToastManager.show_message(msg, 2.0, true)
+	_add_error = true
+	_refresh_add_button_color()
+	_punch(_add_player_btn)
+
+
+func _punch(node: Control) -> void:
+	if not is_instance_valid(node):
+		return
+	var tw := node.create_tween()
+	tw.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "scale", Vector2(1.15, 1.15), 0.08)
+	tw.tween_property(node, "scale", Vector2.ONE, 0.18)
+
+func _format_name(raw: String) -> String:
+	# Title Case: first letter of each word uppercase, rest lowercase.
+	# "i do like pudding" -> "I Do Like Pudding"
+	# "UppErCase NAme"   -> "Uppercase Name"
+	var parts := raw.split(" ", false)
+	var words := PackedStringArray()
+	for part in parts:
+		if part.is_empty():
+			continue
+		var first := part.substr(0, 1).to_upper()
+		var rest := part.substr(1).to_lower()
+		words.append(first + rest)
+	return " ".join(words)
+
+func _starts_with_letter(name: String) -> bool:
+	if name.is_empty():
+		return false
+	var c := name.substr(0, 1).to_upper()
+	return c >= "A" and c <= "Z"
+
+
+func _style_line_edit_bare(le: LineEdit) -> void:
 	le.add_theme_color_override("font_color", Design.WHITE)
 	le.add_theme_color_override("font_placeholder_color", Design.GRAY)
 	le.add_theme_color_override("caret_color", Design.WHITE)
@@ -294,41 +437,11 @@ func _style_line_edit(le: LineEdit) -> void:
 	if Design.font_variation:
 		le.add_theme_font_override("font", Design.font_variation)
 
-	# Filled rounded input with gray border; brightens to green on focus.
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = Design.BLACK
-	_apply_le_border(normal, Design.GRAY)
-	le.add_theme_stylebox_override("normal", normal)
+	var empty := StyleBoxEmpty.new()
+	le.add_theme_stylebox_override("normal",    empty)
+	le.add_theme_stylebox_override("focus",     empty)
+	le.add_theme_stylebox_override("read_only", empty)
 
-	var focus := normal.duplicate() as StyleBoxFlat
-	focus.border_color = Design.GLOBAL_CONTENT_BORDER
-	le.add_theme_stylebox_override("focus", focus)
-
-	var read_only := normal.duplicate() as StyleBoxFlat
-	read_only.bg_color = Design.SIX
-	_apply_le_border(read_only, Design.DISABLED)
-	le.add_theme_stylebox_override("read_only", read_only)
-
-
-func _apply_le_border(sb: StyleBoxFlat, border_color: Color) -> void:
-	sb.border_width_left   = 2
-	sb.border_width_top    = 2
-	sb.border_width_right  = 2
-	sb.border_width_bottom = 2
-	sb.border_color = border_color
-	sb.corner_radius_top_left     = 8
-	sb.corner_radius_top_right    = 8
-	sb.corner_radius_bottom_left  = 8
-	sb.corner_radius_bottom_right = 8
-	sb.content_margin_left   = 12
-	sb.content_margin_right  = 12
-	sb.content_margin_top    = 8
-	sb.content_margin_bottom = 8
-
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if _name_input and _name_input.has_focus():
-			_name_input.release_focus()
 
 func _spacer(height: int) -> Control:
 	var s := Control.new()
