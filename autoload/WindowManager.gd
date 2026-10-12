@@ -4,6 +4,10 @@ extends Node
 func _ready() -> void:
     await get_tree().process_frame
 
+  # Only resize the window on desktop platforms.
+    if not OS.has_feature("desktop"):
+        return
+
     var window := get_window()
     var screen_id := DisplayServer.window_get_current_screen()
     var usable := DisplayServer.screen_get_usable_rect(screen_id)
