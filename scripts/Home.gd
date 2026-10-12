@@ -5,20 +5,23 @@ const SFX_POOL_SIZE := 4
 var music_player: AudioStreamPlayer
 var sfx_players: Array[AudioStreamPlayer] = []
 var sfx_index := 0
-var settings_modal: Control
 
 var music_enabled := true
 var sfx_enabled := true
+
+var _header: AppHeader
+var _footer: AppFooter
+var _settings_modal: Modal
 
 
 func _ready() -> void:
 	_setup_audio()
 	_build()
-	_build_settings_modal()
+	_connect_click_sounds(self)
 
 
 # =====================================================================
-# AUDIO  (temporarily local — moves to AudioManager in Step 3)
+# AUDIO  (temporarily local — will move to AudioManager in Step 3)
 # =====================================================================
 func _setup_audio() -> void:
 	music_player = AudioStreamPlayer.new()
@@ -56,6 +59,15 @@ func _play_click() -> void:
 	p.play()
 
 
+# Recursively hook every Button's pressed signal to the click SFX.
+# Centralized so components stay decoupled from audio.
+func _connect_click_sounds(node: Node) -> void:
+	for child in node.get_children():
+		if child is Button:
+			child.pressed.connect(_play_click)
+		_connect_click_sounds(child)
+
+
 # =====================================================================
 # BUILD
 # =====================================================================
@@ -68,385 +80,46 @@ func _build() -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
-	_build_header()
-	_build_footer()
+	# Header
+	_header = AppHeader.create()
+	_header.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_header.settings_pressed.connect(_play_click)
+	_header.settings_pressed.connect(_open_settings)
+	add_child(_header)
+
+	# Footer
+	_footer = AppFooter.create([
+		{"id": "preview", "text": "PREVIEW TRUTHS & DARES", "color": Design.PRIMARY, "icon": Design.ICON_SEARCH},
+		{"id": "start",   "text": "START GAME",             "color": Design.SECONDARY},
+	])
+	_footer.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_footer.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_footer.button_pressed.connect(_on_footer_button)
+	add_child(_footer)
+
+	# Settings modal
+	_settings_modal = Modal.create()
+	_settings_modal.set_content(_make_settings_content())
+	_settings_modal.closed.connect(func(): pass)  # hook for later
+	add_child(_settings_modal)
 
 
-func _build_header() -> void:
-	var wrapper := VBoxContainer.new()
-	wrapper.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	wrapper.add_theme_constant_override("separation", 0)
-	wrapper.mouse_filter = Control.MOUSE_FILTER_PASS
-	add_child(wrapper)
-
-	var content := Panel.new()
-	content.custom_minimum_size = Vector2(0, Design.HEADER_HEIGHT)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Design.BLACK
-	content.add_theme_stylebox_override("panel", sb)
-	wrapper.add_child(content)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_right", Design.SIDE_PADDING)
-	content.add_child(margin)
-
-	var row := HBoxContainer.new()
-	margin.add_child(row)
-
-	row.add_child(_make_settings_row())
-
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(spacer)
-
-	var logo := TextureRect.new()
-	var logo_tex := load(Design.LOGO_PATH) as Texture2D
-	if logo_tex:
-		logo.texture = logo_tex
-		var tex_size := logo_tex.get_size()
-		var aspect := tex_size.x / tex_size.y
-		logo.custom_minimum_size = Vector2(Design.HEADER_LOGO_H * aspect, Design.HEADER_LOGO_H)
-	else:
-		push_error("Logo failed to load: " + Design.LOGO_PATH)
-	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	logo.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(logo)
-
-	for c in [Design.INNER_BORDER, Design.BLACK, Design.GLOBAL_CONTENT_BORDER]:
-		wrapper.add_child(_make_h_line(c))
-
-
-func _build_footer() -> void:
-	var wrapper := VBoxContainer.new()
-	wrapper.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	wrapper.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	wrapper.add_theme_constant_override("separation", 0)
-	wrapper.mouse_filter = Control.MOUSE_FILTER_PASS
-	add_child(wrapper)
-
-	for c in [Design.GLOBAL_CONTENT_BORDER, Design.BLACK, Design.INNER_BORDER]:
-		wrapper.add_child(_make_h_line(c))
-
-	var content := Panel.new()
-	content.custom_minimum_size = Vector2(0, Design.FOOTER_HEIGHT)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Design.BLACK
-	content.add_theme_stylebox_override("panel", sb)
-	wrapper.add_child(content)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_right", Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_top", Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_bottom", Design.SIDE_PADDING)
-	content.add_child(margin)
-
-	var col := VBoxContainer.new()
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", Design.BUTTON_GAP)
-	margin.add_child(col)
-
-	col.add_child(_make_button("PREVIEW TRUTHS & DARES", Design.PRIMARY, Design.ICON_SEARCH))
-	col.add_child(_make_button("START GAME", Design.SECONDARY))
-
-
-func _make_h_line(c: Color) -> ColorRect:
-	var line := ColorRect.new()
-	line.color = c
-	line.custom_minimum_size = Vector2(0, Design.BORDER_LINE_H)
-	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return line
-
-
-func _make_spacer(height: int) -> Control:
-	var s := Control.new()
-	s.custom_minimum_size = Vector2(0, height)
-	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return s
+func _on_footer_button(id: String) -> void:
+	match id:
+		"preview":
+			print("Preview pressed")
+		"start":
+			print("Start pressed")
 
 
 # =====================================================================
-# REUSABLE: icon + text row
+# SETTINGS CONTENT (goes inside the modal)
 # =====================================================================
-func _make_icon_text_component(icon_path: String, text: String, font_size: int = Design.FONT_SIZE_LABEL) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-
-	var icon := TextureRect.new()
-	var icon_tex := load(icon_path)
-	if icon_tex:
-		icon.texture = icon_tex
-	else:
-		push_error("Icon failed to load: " + icon_path)
-	icon.custom_minimum_size = Vector2(24, 24)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(icon)
-
-	var lbl := Label.new()
-	lbl.text = text
-	Design.apply_label(lbl, font_size)
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(lbl)
-
-	return row
-
-
-func _make_settings_row() -> HBoxContainer:
-	var row := _make_icon_text_component(Design.ICON_COG, "SETTINGS")
-	row.mouse_filter = Control.MOUSE_FILTER_STOP
-	row.gui_input.connect(_on_settings_input)
-	row.resized.connect(func(): row.pivot_offset = row.size / 2)
-	row.mouse_entered.connect(_animate_scale.bind(row, Design.HOVER_SCALE, Design.HOVER_TIME))
-	row.mouse_exited.connect(_animate_scale.bind(row, 1.0, Design.HOVER_TIME))
-	return row
-
-
-func _on_settings_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_play_click()
-		_open_settings()
-
-
-# =====================================================================
-# BUTTON FACTORY
-# =====================================================================
-func _make_button(text: String, bg_color: Color, icon_path: String = Design.ICON_CHEVRON) -> Button:
-	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(0, Design.BUTTON_HEIGHT)
-	btn.focus_mode = Control.FOCUS_NONE
-
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg_color
-	sb.corner_radius_top_left = Design.BUTTON_RADIUS
-	sb.corner_radius_top_right = Design.BUTTON_RADIUS
-	sb.corner_radius_bottom_left = Design.BUTTON_RADIUS
-	sb.corner_radius_bottom_right = Design.BUTTON_RADIUS
-	btn.add_theme_stylebox_override("normal", sb)
-	btn.add_theme_stylebox_override("hover", sb)
-	btn.add_theme_stylebox_override("pressed", sb)
-	btn.add_theme_stylebox_override("focus", sb)
-
-	var border_panel := Panel.new()
-	border_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	border_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bsb := StyleBoxFlat.new()
-	bsb.draw_center = false
-	bsb.border_width_left = Design.BUTTON_BORDER_W
-	bsb.border_width_top = Design.BUTTON_BORDER_W
-	bsb.border_width_right = Design.BUTTON_BORDER_W
-	bsb.border_width_bottom = Design.BUTTON_BORDER_W
-	bsb.border_color = Design.BUTTON_BORDER
-	bsb.corner_radius_top_left = Design.BUTTON_RADIUS
-	bsb.corner_radius_top_right = Design.BUTTON_RADIUS
-	bsb.corner_radius_bottom_left = Design.BUTTON_RADIUS
-	bsb.corner_radius_bottom_right = Design.BUTTON_RADIUS
-	border_panel.add_theme_stylebox_override("panel", bsb)
-	btn.add_child(border_panel)
-
-	var overlay := MarginContainer.new()
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.add_theme_constant_override("margin_left", Design.BUTTON_PADDING_H)
-	overlay.add_theme_constant_override("margin_right", Design.BUTTON_PADDING_H)
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.add_child(overlay)
-
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(row)
-
-	var lbl := Label.new()
-	lbl.text = text
-	Design.apply_label(lbl, Design.FONT_SIZE_BTN)
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(lbl)
-
-	var icon := TextureRect.new()
-	var icon_tex := load(icon_path)
-	if icon_tex:
-		icon.texture = icon_tex
-	else:
-		push_error("Icon failed to load: " + icon_path)
-	icon.custom_minimum_size = Vector2(18, 18)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(icon)
-
-	btn.resized.connect(func(): btn.pivot_offset = btn.size / 2)
-	btn.mouse_entered.connect(_animate_scale.bind(btn, Design.HOVER_SCALE, Design.HOVER_TIME))
-	btn.mouse_exited.connect(_animate_scale.bind(btn, 1.0, Design.HOVER_TIME))
-	btn.button_down.connect(_animate_scale.bind(btn, Design.PRESS_SCALE, Design.PRESS_TIME))
-	btn.button_up.connect(_animate_scale.bind(btn, 1.0, Design.PRESS_TIME))
-	btn.pressed.connect(_play_click)
-
-	return btn
-
-
-func _animate_scale(node: Control, target: float, time: float) -> void:
-	if not is_instance_valid(node):
-		return
-	var tw := create_tween()
-	tw.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(node, "scale", Vector2(target, target), time)
-
-
-# =====================================================================
-# TOGGLE GROUP
-# =====================================================================
-func _make_toggle_button(text: String) -> Button:
-	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(0, Design.BUTTON_HEIGHT)
-	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	btn.focus_mode = Control.FOCUS_NONE
-
-	var border_panel := Panel.new()
-	border_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	border_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bsb := StyleBoxFlat.new()
-	bsb.draw_center = false
-	bsb.border_width_left = Design.BUTTON_BORDER_W
-	bsb.border_width_top = Design.BUTTON_BORDER_W
-	bsb.border_width_right = Design.BUTTON_BORDER_W
-	bsb.border_width_bottom = Design.BUTTON_BORDER_W
-	bsb.border_color = Design.BUTTON_BORDER
-	bsb.corner_radius_top_left = Design.BUTTON_RADIUS
-	bsb.corner_radius_top_right = Design.BUTTON_RADIUS
-	bsb.corner_radius_bottom_left = Design.BUTTON_RADIUS
-	bsb.corner_radius_bottom_right = Design.BUTTON_RADIUS
-	border_panel.add_theme_stylebox_override("panel", bsb)
-	btn.add_child(border_panel)
-
-	var lbl := Label.new()
-	lbl.text = text
-	lbl.name = "ToggleLabel"
-	Design.apply_label(lbl, Design.FONT_SIZE_BTN)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.add_child(lbl)
-
-	btn.resized.connect(func(): btn.pivot_offset = btn.size / 2)
-	btn.mouse_entered.connect(_animate_scale.bind(btn, Design.HOVER_SCALE, Design.HOVER_TIME))
-	btn.mouse_exited.connect(_animate_scale.bind(btn, 1.0, Design.HOVER_TIME))
-	btn.button_down.connect(_animate_scale.bind(btn, Design.PRESS_SCALE, Design.PRESS_TIME))
-	btn.button_up.connect(_animate_scale.bind(btn, 1.0, Design.PRESS_TIME))
-
-	return btn
-
-
-func _style_toggle_button(btn: Button, is_active: bool) -> void:
-	var bg_color := Design.FIVE if is_active else Design.SIX
-	var text_color := Design.WHITE if is_active else Design.GRAY
-
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = bg_color
-	sb.corner_radius_top_left = Design.BUTTON_RADIUS
-	sb.corner_radius_top_right = Design.BUTTON_RADIUS
-	sb.corner_radius_bottom_left = Design.BUTTON_RADIUS
-	sb.corner_radius_bottom_right = Design.BUTTON_RADIUS
-	btn.add_theme_stylebox_override("normal", sb)
-	btn.add_theme_stylebox_override("hover", sb)
-	btn.add_theme_stylebox_override("pressed", sb)
-	btn.add_theme_stylebox_override("focus", sb)
-
-	var lbl := btn.get_node_or_null("ToggleLabel") as Label
-	if lbl:
-		lbl.add_theme_color_override("font_color", text_color)
-
-
-func _make_toggle_group(initial: bool, on_change: Callable) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-
-	var off_btn := _make_toggle_button("TURN OFF")
-	var on_btn := _make_toggle_button("TURN ON")
-	row.add_child(off_btn)
-	row.add_child(on_btn)
-
-	var update := func(is_on: bool) -> void:
-		_style_toggle_button(off_btn, not is_on)
-		_style_toggle_button(on_btn, is_on)
-
-	off_btn.pressed.connect(func():
-		update.call(false)
-		on_change.call(false)
-		_play_click()
-	)
-	on_btn.pressed.connect(func():
-		update.call(true)
-		on_change.call(true)
-		_play_click()
-	)
-
-	update.call(initial)
-	return row
-
-
-# =====================================================================
-# SETTINGS MODAL
-# =====================================================================
-func _build_settings_modal() -> void:
-	settings_modal = Control.new()
-	settings_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	settings_modal.visible = false
-	settings_modal.mouse_filter = Control.MOUSE_FILTER_STOP
-	settings_modal.z_index = 100
-	add_child(settings_modal)
-
-	var dimmer := ColorRect.new()
-	dimmer.color = Color(10 / 255.0, 10 / 255.0, 10 / 255.0, 0.5)
-	dimmer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dimmer.mouse_filter = Control.MOUSE_FILTER_STOP
-	dimmer.gui_input.connect(_on_dimmer_input)
-	settings_modal.add_child(dimmer)
-
-	var outer := VBoxContainer.new()
-	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	outer.alignment = BoxContainer.ALIGNMENT_END
-	outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	settings_modal.add_child(outer)
-
-	var wrapper := VBoxContainer.new()
-	wrapper.add_theme_constant_override("separation", 0)
-	wrapper.mouse_filter = Control.MOUSE_FILTER_PASS
-	outer.add_child(wrapper)
-
-	for c in [Design.GLOBAL_CONTENT_BORDER, Design.BLACK, Design.INNER_BORDER]:
-		wrapper.add_child(_make_h_line(c))
-
-	var panel := PanelContainer.new()
-	var psb := StyleBoxFlat.new()
-	psb.bg_color = Design.BLACK
-	panel.add_theme_stylebox_override("panel", psb)
-	wrapper.add_child(panel)
-
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_right", Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_top", Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_bottom", Design.SIDE_PADDING)
-	panel.add_child(margin)
-
+func _make_settings_content() -> VBoxContainer:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 0)
-	margin.add_child(col)
 
+	# Title + close button row
 	var title_row := HBoxContainer.new()
 	col.add_child(title_row)
 
@@ -469,55 +142,61 @@ func _build_settings_modal() -> void:
 	close_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	close_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	close_rect.mouse_filter = Control.MOUSE_FILTER_STOP
-	close_rect.gui_input.connect(_on_close_icon_input)
+	close_rect.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_play_click()
+			_settings_modal.close()
+	)
 	title_row.add_child(close_rect)
 
 	col.add_child(_make_spacer(16))
 
-	var music_lbl := Label.new()
-	music_lbl.text = "Music"
-	Design.apply_label(music_lbl, Design.FONT_SIZE_LABEL, Design.GRAY)
-	col.add_child(music_lbl)
-
+	# Music
+	col.add_child(_make_section_label("Music"))
 	col.add_child(_make_spacer(12))
-
-	var music_toggle := _make_toggle_group(music_enabled, _on_music_toggle)
-	col.add_child(music_toggle)
+	var music_tg := ToggleGroup.create(music_enabled)
+	music_tg.changed.connect(_on_music_toggle)
+	col.add_child(music_tg)
 
 	col.add_child(_make_spacer(16))
 
-	var sfx_lbl := Label.new()
-	sfx_lbl.text = "Sound Effect"
-	Design.apply_label(sfx_lbl, Design.FONT_SIZE_LABEL, Design.GRAY)
-	col.add_child(sfx_lbl)
-
+	# Sound Effect
+	col.add_child(_make_section_label("Sound Effect"))
 	col.add_child(_make_spacer(12))
-
-	var sfx_toggle := _make_toggle_group(sfx_enabled, _on_sfx_toggle)
-	col.add_child(sfx_toggle)
+	var sfx_tg := ToggleGroup.create(sfx_enabled)
+	sfx_tg.changed.connect(_on_sfx_toggle)
+	col.add_child(sfx_tg)
 
 	col.add_child(_make_spacer(16))
 
-	# Hidden until navigation to other screens exists.
-	var back_btn := _make_button("GO BACK TO MENU", Design.SECONDARY, Design.ICON_HOUSE)
-	back_btn.pressed.connect(_on_back_to_menu)
+	# Hidden back-to-menu button (kept for when navigation exists)
+	var back_btn := StyledButton.create("GO BACK TO MENU", Design.SECONDARY, Design.ICON_HOUSE)
+	back_btn.pressed.connect(func(): _settings_modal.close())
 	back_btn.visible = false
 	col.add_child(back_btn)
 
-
-func _on_dimmer_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_close_settings()
+	return col
 
 
-func _on_close_icon_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_play_click()
-		_close_settings()
+func _make_section_label(text: String) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	Design.apply_label(lbl, Design.FONT_SIZE_LABEL, Design.GRAY)
+	return lbl
 
 
-func _on_back_to_menu() -> void:
-	_close_settings()
+func _make_spacer(height: int) -> Control:
+	var s := Control.new()
+	s.custom_minimum_size = Vector2(0, height)
+	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return s
+
+
+# =====================================================================
+# SETTINGS HANDLERS
+# =====================================================================
+func _open_settings() -> void:
+	_settings_modal.open()
 
 
 func _on_music_toggle(is_on: bool) -> void:
@@ -528,18 +207,3 @@ func _on_music_toggle(is_on: bool) -> void:
 
 func _on_sfx_toggle(is_on: bool) -> void:
 	sfx_enabled = is_on
-
-
-func _open_settings() -> void:
-	settings_modal.visible = true
-	settings_modal.modulate.a = 0.0
-	var tw := create_tween()
-	tw.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_property(settings_modal, "modulate:a", 1.0, 0.2)
-
-
-func _close_settings() -> void:
-	var tw := create_tween()
-	tw.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_property(settings_modal, "modulate:a", 0.0, 0.15)
-	tw.tween_callback(func(): settings_modal.visible = false)
