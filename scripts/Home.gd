@@ -2,239 +2,618 @@ extends Control
 
 # --- Paths ---
 const BG_PATH := "res://assets/MainMenuBackground.png"
-const LOGO_PATH := "res://assets/TruthOrDareLogo.png"
+const LOGO_PATH := "res://assets/TruthOrDareLogo.svg"
 const FONT_PATH := "res://assets/fonts/FugazOne-Regular.ttf"
 const ICON_CHEVRON := "res://assets/icons/chevron_double.svg"
+const ICON_SEARCH := "res://assets/icons/search.svg"
 const ICON_COG := "res://assets/icons/cog.svg"
-const ICON_CSV := "res://assets/icons/csv.svg"
+const ICON_CLOSE := "res://assets/icons/close.svg"
+const ICON_HOUSE := "res://assets/icons/house.svg"
+
+const MUSIC_PATH := "res://assets/audio/music.mp3"
+const SFX_CLICK_PATH := "res://assets/audio/click.mp3"
 
 # --- Design tokens ---
-const COLOR_TEXT := Color("#C8C8C8")
-const COLOR_START_BG := Color("#325349")
-const COLOR_PREVIEW_BG := Color("#402D3D")
-const COLOR_BORDER := Color(10 / 255.0, 10 / 255.0, 10 / 255.0, 0.35)
+const COLOR_BLACK := Color("#0a0a0a")
+const COLOR_WHITE := Color("#c8c8c8")
+const COLOR_GRAY := Color("#939393")
+const COLOR_TRANSPARENT_BLACK := Color("#0a0a0acc")
+const COLOR_PRIMARY := Color("#402d3d")
+const COLOR_BUTTON_BORDER := Color("#00000059")
+const COLOR_SECONDARY := Color("#325349")
+const COLOR_TERTIARY := Color("#990000")
+const COLOR_FOURTH := Color("#319194")
+const COLOR_INNER_BORDER := Color("#054333")
+const COLOR_GLOBAL_CONTENT_BORDER := Color("#007d5c")
+const COLOR_FIVE := Color("#304e64")
+const COLOR_SIX := Color("#211f2d")
+const COLOR_SEVEN := Color("#ca7564")
+const COLOR_EIGHT := Color("#f5b061")
 
+# --- Layout ---
 const SIDE_PADDING := 16
-const GROUP_GAP := 24
 const BUTTON_GAP := 16
 const BUTTON_HEIGHT := 48
 const BUTTON_PADDING_H := 16
 const BUTTON_BORDER_W := 3
 const BUTTON_RADIUS := 8
-const LOGO_WIDTH := 306.59
-const LOGO_HEIGHT := 68.17
+const BORDER_LINE_H := 3
+
+const HEADER_HEIGHT := 62.0
+const HEADER_LOGO_H := 24.0
+const FOOTER_HEIGHT := 152.0
+
 const FONT_SIZE_BTN := 14
 const FONT_SIZE_LABEL := 14
+const FONT_SIZE_TITLE := 16
 
-# --- Typography tweaks ---
-# Figma letter-spacing is em-relative. 0.2% of 14px = 0.028px — invisible.
-# Leave at 0 unless you want visible tracking; try 0.5 or 1.0.
 const LETTER_SPACING_PX := 0.0
-# Figma line-height 100%. Godot adds line_spacing px between lines.
-# 0 gives the tightest rendering Godot allows.
 const LINE_SPACING_PX := 0
 
+const HOVER_SCALE := 1.03
+const PRESS_SCALE := 0.97
+const HOVER_TIME := 0.15
+const PRESS_TIME := 0.08
+
 var font: FontFile
+var music_player: AudioStreamPlayer
+var sfx_players: Array[AudioStreamPlayer] = []
+var sfx_index := 0
+const SFX_POOL_SIZE := 4
+var settings_modal: Control
+
+var music_enabled := true
+var sfx_enabled := true
 
 func _ready() -> void:
-    if ResourceLoader.exists(FONT_PATH):
-        font = load(FONT_PATH) as FontFile
-    else:
-        push_error("Font missing: " + FONT_PATH)
-    _build()
+	if ResourceLoader.exists(FONT_PATH):
+		font = load(FONT_PATH) as FontFile
+	else:
+		push_error("Font missing: " + FONT_PATH)
+	_setup_audio()
+	_build()
+	_build_settings_modal()
+
 
 # =====================================================================
-# Typography helpers — apply to EVERY label
+# AUDIO
+# =====================================================================
+func _setup_audio() -> void:
+	music_player = AudioStreamPlayer.new()
+	if ResourceLoader.exists(MUSIC_PATH):
+		var stream := load(MUSIC_PATH)
+		if stream is AudioStreamMP3:
+			stream.loop = true
+		elif stream is AudioStreamOggVorbis:
+			stream.loop = true
+		music_player.stream = stream
+		music_player.volume_db = -12.0
+		add_child(music_player)
+		music_player.play()
+	else:
+		push_warning("Music not found: " + MUSIC_PATH)
+
+	if ResourceLoader.exists(SFX_CLICK_PATH):
+		var sfx_stream := load(SFX_CLICK_PATH)
+		for i in SFX_POOL_SIZE:
+			var p := AudioStreamPlayer.new()
+			p.stream = sfx_stream
+			p.volume_db = -6.0
+			add_child(p)
+			sfx_players.append(p)
+	else:
+		push_warning("Click SFX not found: " + SFX_CLICK_PATH)
+
+func _play_click() -> void:
+	if not sfx_enabled or sfx_players.is_empty():
+		return
+	# Cycle through the pool. If the chosen player is already playing,
+	# stop and restart it so the click always fires audibly.
+	var p := sfx_players[sfx_index]
+	sfx_index = (sfx_index + 1) % sfx_players.size()
+	p.stop()
+	p.play()
+
+
+# =====================================================================
+# Typography
 # =====================================================================
 func _make_font_variation() -> FontVariation:
-    var fv := FontVariation.new()
-    if font:
-        fv.base_font = font
-    fv.spacing_glyph = int(LETTER_SPACING_PX)
-    return fv
+	var fv := FontVariation.new()
+	if font:
+		fv.base_font = font
+	fv.spacing_glyph = int(LETTER_SPACING_PX)
+	return fv
 
-func _apply_label_style(lbl: Label, size: int) -> void:
-    lbl.add_theme_font_override("font", _make_font_variation())
-    lbl.add_theme_font_size_override("font_size", size)
-    lbl.add_theme_constant_override("line_spacing", LINE_SPACING_PX)
-    lbl.add_theme_color_override("font_color", COLOR_TEXT)
+func _apply_label_style(lbl: Label, font_size: int, color: Color = COLOR_WHITE) -> void:
+	lbl.add_theme_font_override("font", _make_font_variation())
+	lbl.add_theme_font_size_override("font_size", font_size)
+	lbl.add_theme_constant_override("line_spacing", LINE_SPACING_PX)
+	lbl.add_theme_color_override("font_color", color)
 
 
+# =====================================================================
+# BUILD
+# =====================================================================
 func _build() -> void:
-    # Background
-    var bg := TextureRect.new()
-    bg.texture = load(BG_PATH)
-    bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-    bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-    bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    add_child(bg)
+	var bg := TextureRect.new()
+	bg.texture = load(BG_PATH)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg)
 
-    # 16px padding wrapper
-    var margin := MarginContainer.new()
-    margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-    margin.add_theme_constant_override("margin_left", SIDE_PADDING)
-    margin.add_theme_constant_override("margin_right", SIDE_PADDING)
-    margin.add_theme_constant_override("margin_top", SIDE_PADDING)
-    margin.add_theme_constant_override("margin_bottom", SIDE_PADDING)
-    add_child(margin)
-
-    var col := VBoxContainer.new()
-    col.alignment = BoxContainer.ALIGNMENT_END
-    col.add_theme_constant_override("separation", GROUP_GAP)
-    margin.add_child(col)
-
-    # -------- Logo --------
-    var logo := TextureRect.new()
-    var logo_tex := load(LOGO_PATH) as Texture2D
-    if logo_tex:
-        logo.texture = logo_tex
-        logo.custom_minimum_size = Vector2(LOGO_WIDTH, LOGO_HEIGHT)
-    else:
-        push_error("Logo failed to load: " + LOGO_PATH)
-    logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-    logo.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-    col.add_child(logo)
-
-    # -------- Buttons --------
-    var btn_col := VBoxContainer.new()
-    btn_col.add_theme_constant_override("separation", BUTTON_GAP)
-    col.add_child(btn_col)
-
-    btn_col.add_child(_make_button("START GAME", COLOR_START_BG))
-    btn_col.add_child(_make_button("PREVIEW TRUTHS & DARES", COLOR_PREVIEW_BG))
-
-    # -------- Bottom row --------
-    var bottom := HBoxContainer.new()
-    col.add_child(bottom)
-
-    bottom.add_child(_make_settings_row())
-
-    var spacer := Control.new()
-    spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    bottom.add_child(spacer)
-
-    bottom.add_child(_make_upload_row())
+	_build_header()
+	_build_footer()
 
 
-func _make_button(text: String, bg_color: Color) -> Button:
-    var btn := Button.new()
-    btn.custom_minimum_size = Vector2(0, BUTTON_HEIGHT)
-    btn.focus_mode = Control.FOCUS_NONE
+func _build_header() -> void:
+	var wrapper := VBoxContainer.new()
+	wrapper.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	wrapper.add_theme_constant_override("separation", 0)
+	wrapper.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(wrapper)
 
-    var sb := StyleBoxFlat.new()
-    sb.bg_color = bg_color
-    sb.corner_radius_top_left = BUTTON_RADIUS
-    sb.corner_radius_top_right = BUTTON_RADIUS
-    sb.corner_radius_bottom_left = BUTTON_RADIUS
-    sb.corner_radius_bottom_right = BUTTON_RADIUS
-    btn.add_theme_stylebox_override("normal", sb)
-    btn.add_theme_stylebox_override("hover", sb)
-    btn.add_theme_stylebox_override("pressed", sb)
-    btn.add_theme_stylebox_override("focus", sb)
+	var content := Panel.new()
+	content.custom_minimum_size = Vector2(0, HEADER_HEIGHT)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = COLOR_BLACK
+	content.add_theme_stylebox_override("panel", sb)
+	wrapper.add_child(content)
 
-    var border_panel := Panel.new()
-    border_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-    border_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    var bsb := StyleBoxFlat.new()
-    bsb.draw_center = false
-    bsb.border_width_left = BUTTON_BORDER_W
-    bsb.border_width_top = BUTTON_BORDER_W
-    bsb.border_width_right = BUTTON_BORDER_W
-    bsb.border_width_bottom = BUTTON_BORDER_W
-    bsb.border_color = COLOR_BORDER
-    bsb.corner_radius_top_left = BUTTON_RADIUS
-    bsb.corner_radius_top_right = BUTTON_RADIUS
-    bsb.corner_radius_bottom_left = BUTTON_RADIUS
-    bsb.corner_radius_bottom_right = BUTTON_RADIUS
-    border_panel.add_theme_stylebox_override("panel", bsb)
-    btn.add_child(border_panel)
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", SIDE_PADDING)
+	margin.add_theme_constant_override("margin_right", SIDE_PADDING)
+	content.add_child(margin)
 
-    var overlay := MarginContainer.new()
-    overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-    overlay.add_theme_constant_override("margin_left", BUTTON_PADDING_H)
-    overlay.add_theme_constant_override("margin_right", BUTTON_PADDING_H)
-    overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    btn.add_child(overlay)
+	var row := HBoxContainer.new()
+	margin.add_child(row)
 
-    var row := HBoxContainer.new()
-    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    overlay.add_child(row)
+	row.add_child(_make_settings_row())
 
-    var lbl := Label.new()
-    lbl.text = text
-    _apply_label_style(lbl, FONT_SIZE_BTN)
-    lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    row.add_child(lbl)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(spacer)
 
-    var icon := TextureRect.new()
-    var icon_tex := load(ICON_CHEVRON)
-    if icon_tex:
-        icon.texture = icon_tex
-    else:
-        push_error("Chevron failed to load: " + ICON_CHEVRON)
-    icon.custom_minimum_size = Vector2(18, 18)
-    icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-    icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    icon.modulate = COLOR_TEXT
-    icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    row.add_child(icon)
+	var logo := TextureRect.new()
+	var logo_tex := load(LOGO_PATH) as Texture2D
+	if logo_tex:
+		logo.texture = logo_tex
+		var tex_size := logo_tex.get_size()
+		var aspect := tex_size.x / tex_size.y
+		logo.custom_minimum_size = Vector2(HEADER_LOGO_H * aspect, HEADER_LOGO_H)
+	else:
+		push_error("Logo failed to load: " + LOGO_PATH)
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(logo)
 
-    return btn
+	for c in [COLOR_INNER_BORDER, COLOR_BLACK, COLOR_GLOBAL_CONTENT_BORDER]:
+		wrapper.add_child(_make_h_line(c))
+
+
+func _build_footer() -> void:
+	var wrapper := VBoxContainer.new()
+	wrapper.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	wrapper.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	wrapper.add_theme_constant_override("separation", 0)
+	wrapper.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(wrapper)
+
+	for c in [COLOR_GLOBAL_CONTENT_BORDER, COLOR_BLACK, COLOR_INNER_BORDER]:
+		wrapper.add_child(_make_h_line(c))
+
+	var content := Panel.new()
+	content.custom_minimum_size = Vector2(0, FOOTER_HEIGHT)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = COLOR_BLACK
+	content.add_theme_stylebox_override("panel", sb)
+	wrapper.add_child(content)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", SIDE_PADDING)
+	margin.add_theme_constant_override("margin_right", SIDE_PADDING)
+	margin.add_theme_constant_override("margin_top", SIDE_PADDING)
+	margin.add_theme_constant_override("margin_bottom", SIDE_PADDING)
+	content.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", BUTTON_GAP)
+	margin.add_child(col)
+
+	col.add_child(_make_button("PREVIEW TRUTHS & DARES", COLOR_PRIMARY, ICON_SEARCH))
+	col.add_child(_make_button("START GAME", COLOR_SECONDARY))
+
+
+func _make_h_line(c: Color) -> ColorRect:
+	var line := ColorRect.new()
+	line.color = c
+	line.custom_minimum_size = Vector2(0, BORDER_LINE_H)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return line
+
+
+func _make_spacer(height: int) -> Control:
+	var s := Control.new()
+	s.custom_minimum_size = Vector2(0, height)
+	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return s
+
+
+# =====================================================================
+# REUSABLE: icon + text row
+# =====================================================================
+func _make_icon_text_component(icon_path: String, text: String, font_size: int = FONT_SIZE_LABEL) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	var icon := TextureRect.new()
+	var icon_tex := load(icon_path)
+	if icon_tex:
+		icon.texture = icon_tex
+	else:
+		push_error("Icon failed to load: " + icon_path)
+	icon.custom_minimum_size = Vector2(24, 24)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(icon)
+
+	var lbl := Label.new()
+	lbl.text = text
+	_apply_label_style(lbl, font_size)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(lbl)
+
+	return row
 
 
 func _make_settings_row() -> HBoxContainer:
-    var row := HBoxContainer.new()
-    row.add_theme_constant_override("separation", 12)
-    row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var row := _make_icon_text_component(ICON_COG, "SETTINGS")
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.gui_input.connect(_on_settings_input)
+	row.resized.connect(func(): row.pivot_offset = row.size / 2)
+	row.mouse_entered.connect(_animate_scale.bind(row, HOVER_SCALE, HOVER_TIME))
+	row.mouse_exited.connect(_animate_scale.bind(row, 1.0, HOVER_TIME))
+	return row
 
-    var icon := TextureRect.new()
-    icon.texture = load(ICON_COG)
-    icon.custom_minimum_size = Vector2(30, 30)
-    icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-    icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    icon.modulate = COLOR_TEXT
-    row.add_child(icon)
-
-    var lbl := Label.new()
-    lbl.text = "SETTINGS"
-    _apply_label_style(lbl, FONT_SIZE_LABEL)
-    lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    row.add_child(lbl)
-
-    return row
+func _on_settings_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_play_click()
+		_open_settings()
 
 
-func _make_upload_row() -> HBoxContainer:
-    var row := HBoxContainer.new()
-    row.add_theme_constant_override("separation", 12)
-    row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+# =====================================================================
+# BUTTON FACTORY
+# =====================================================================
+func _make_button(text: String, bg_color: Color, icon_path: String = ICON_CHEVRON) -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(0, BUTTON_HEIGHT)
+	btn.focus_mode = Control.FOCUS_NONE
 
-    var icon := TextureRect.new()
-    icon.texture = load(ICON_CSV)
-    icon.custom_minimum_size = Vector2(28, 28)
-    icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-    icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-    icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    icon.modulate = COLOR_TEXT
-    row.add_child(icon)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg_color
+	sb.corner_radius_top_left = BUTTON_RADIUS
+	sb.corner_radius_top_right = BUTTON_RADIUS
+	sb.corner_radius_bottom_left = BUTTON_RADIUS
+	sb.corner_radius_bottom_right = BUTTON_RADIUS
+	btn.add_theme_stylebox_override("normal", sb)
+	btn.add_theme_stylebox_override("hover", sb)
+	btn.add_theme_stylebox_override("pressed", sb)
+	btn.add_theme_stylebox_override("focus", sb)
 
-    var text_col := VBoxContainer.new()
-    text_col.add_theme_constant_override("separation", 4)
-    text_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-    row.add_child(text_col)
+	var border_panel := Panel.new()
+	border_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	border_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bsb := StyleBoxFlat.new()
+	bsb.draw_center = false
+	bsb.border_width_left = BUTTON_BORDER_W
+	bsb.border_width_top = BUTTON_BORDER_W
+	bsb.border_width_right = BUTTON_BORDER_W
+	bsb.border_width_bottom = BUTTON_BORDER_W
+	bsb.border_color = COLOR_BUTTON_BORDER
+	bsb.corner_radius_top_left = BUTTON_RADIUS
+	bsb.corner_radius_top_right = BUTTON_RADIUS
+	bsb.corner_radius_bottom_left = BUTTON_RADIUS
+	bsb.corner_radius_bottom_right = BUTTON_RADIUS
+	border_panel.add_theme_stylebox_override("panel", bsb)
+	btn.add_child(border_panel)
 
-    for t in ["UPLOAD", "CUSTOM CSV"]:
-        var lbl := Label.new()
-        lbl.text = t
-        _apply_label_style(lbl, FONT_SIZE_LABEL)
-        text_col.add_child(lbl)
+	var overlay := MarginContainer.new()
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_theme_constant_override("margin_left", BUTTON_PADDING_H)
+	overlay.add_theme_constant_override("margin_right", BUTTON_PADDING_H)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(overlay)
 
-    return row
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(row)
+
+	var lbl := Label.new()
+	lbl.text = text
+	_apply_label_style(lbl, FONT_SIZE_BTN)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(lbl)
+
+	var icon := TextureRect.new()
+	var icon_tex := load(icon_path)
+	if icon_tex:
+		icon.texture = icon_tex
+	else:
+		push_error("Icon failed to load: " + icon_path)
+	icon.custom_minimum_size = Vector2(18, 18)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(icon)
+
+	btn.resized.connect(func(): btn.pivot_offset = btn.size / 2)
+	btn.mouse_entered.connect(_animate_scale.bind(btn, HOVER_SCALE, HOVER_TIME))
+	btn.mouse_exited.connect(_animate_scale.bind(btn, 1.0, HOVER_TIME))
+	btn.button_down.connect(_animate_scale.bind(btn, PRESS_SCALE, PRESS_TIME))
+	btn.button_up.connect(_animate_scale.bind(btn, 1.0, PRESS_TIME))
+	btn.pressed.connect(_play_click)
+
+	return btn
+
+
+func _animate_scale(node: Control, target: float, time: float) -> void:
+	if not is_instance_valid(node):
+		return
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(node, "scale", Vector2(target, target), time)
+
+
+# =====================================================================
+# TOGGLE GROUP
+# =====================================================================
+func _make_toggle_button(text: String) -> Button:
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(0, BUTTON_HEIGHT)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.focus_mode = Control.FOCUS_NONE
+
+	var border_panel := Panel.new()
+	border_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	border_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bsb := StyleBoxFlat.new()
+	bsb.draw_center = false
+	bsb.border_width_left = BUTTON_BORDER_W
+	bsb.border_width_top = BUTTON_BORDER_W
+	bsb.border_width_right = BUTTON_BORDER_W
+	bsb.border_width_bottom = BUTTON_BORDER_W
+	bsb.border_color = COLOR_BUTTON_BORDER
+	bsb.corner_radius_top_left = BUTTON_RADIUS
+	bsb.corner_radius_top_right = BUTTON_RADIUS
+	bsb.corner_radius_bottom_left = BUTTON_RADIUS
+	bsb.corner_radius_bottom_right = BUTTON_RADIUS
+	border_panel.add_theme_stylebox_override("panel", bsb)
+	btn.add_child(border_panel)
+
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.name = "ToggleLabel"
+	_apply_label_style(lbl, FONT_SIZE_BTN)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(lbl)
+
+	btn.resized.connect(func(): btn.pivot_offset = btn.size / 2)
+	btn.mouse_entered.connect(_animate_scale.bind(btn, HOVER_SCALE, HOVER_TIME))
+	btn.mouse_exited.connect(_animate_scale.bind(btn, 1.0, HOVER_TIME))
+	btn.button_down.connect(_animate_scale.bind(btn, PRESS_SCALE, PRESS_TIME))
+	btn.button_up.connect(_animate_scale.bind(btn, 1.0, PRESS_TIME))
+
+	return btn
+
+
+func _style_toggle_button(btn: Button, is_active: bool) -> void:
+	var bg_color := COLOR_FIVE if is_active else COLOR_SIX
+	var text_color := COLOR_WHITE if is_active else COLOR_GRAY
+
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg_color
+	sb.corner_radius_top_left = BUTTON_RADIUS
+	sb.corner_radius_top_right = BUTTON_RADIUS
+	sb.corner_radius_bottom_left = BUTTON_RADIUS
+	sb.corner_radius_bottom_right = BUTTON_RADIUS
+	btn.add_theme_stylebox_override("normal", sb)
+	btn.add_theme_stylebox_override("hover", sb)
+	btn.add_theme_stylebox_override("pressed", sb)
+	btn.add_theme_stylebox_override("focus", sb)
+
+	var lbl := btn.get_node_or_null("ToggleLabel") as Label
+	if lbl:
+		lbl.add_theme_color_override("font_color", text_color)
+
+
+func _make_toggle_group(initial: bool, on_change: Callable) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+
+	var off_btn := _make_toggle_button("TURN OFF")
+	var on_btn := _make_toggle_button("TURN ON")
+	row.add_child(off_btn)
+	row.add_child(on_btn)
+
+	var update := func(is_on: bool) -> void:
+		_style_toggle_button(off_btn, not is_on)
+		_style_toggle_button(on_btn, is_on)
+
+	off_btn.pressed.connect(func():
+		update.call(false)
+		on_change.call(false)
+		_play_click()
+	)
+	on_btn.pressed.connect(func():
+		update.call(true)
+		on_change.call(true)
+		_play_click()
+	)
+
+	update.call(initial)
+	return row
+
+
+# =====================================================================
+# SETTINGS MODAL
+# =====================================================================
+func _build_settings_modal() -> void:
+	settings_modal = Control.new()
+	settings_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	settings_modal.visible = false
+	settings_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	settings_modal.z_index = 100
+	add_child(settings_modal)
+
+	# Dimmer catches outside clicks
+	var dimmer := ColorRect.new()
+	dimmer.color = Color(10 / 255.0, 10 / 255.0, 10 / 255.0, 0.5)
+	dimmer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dimmer.mouse_filter = Control.MOUSE_FILTER_STOP
+	dimmer.gui_input.connect(_on_dimmer_input)
+	settings_modal.add_child(dimmer)
+
+	# Full-rect VBox with END alignment → its content stacks from the bottom
+	var outer := VBoxContainer.new()
+	outer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	outer.alignment = BoxContainer.ALIGNMENT_END
+	outer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	settings_modal.add_child(outer)
+
+	var wrapper := VBoxContainer.new()
+	wrapper.add_theme_constant_override("separation", 0)
+	wrapper.mouse_filter = Control.MOUSE_FILTER_PASS
+	outer.add_child(wrapper)
+
+	for c in [COLOR_GLOBAL_CONTENT_BORDER, COLOR_BLACK, COLOR_INNER_BORDER]:
+		wrapper.add_child(_make_h_line(c))
+
+	var panel := PanelContainer.new()
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = COLOR_BLACK
+	panel.add_theme_stylebox_override("panel", psb)
+	wrapper.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", SIDE_PADDING)
+	margin.add_theme_constant_override("margin_right", SIDE_PADDING)
+	margin.add_theme_constant_override("margin_top", SIDE_PADDING)
+	margin.add_theme_constant_override("margin_bottom", SIDE_PADDING)
+	panel.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 0)
+	margin.add_child(col)
+
+	# --- Title row: SETTINGS + X ---
+	var title_row := HBoxContainer.new()
+	col.add_child(title_row)
+
+	var title := Label.new()
+	title.text = "SETTINGS"
+	_apply_label_style(title, FONT_SIZE_TITLE)
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_row.add_child(title)
+
+	var close_rect := TextureRect.new()
+	var close_tex := load(ICON_CLOSE)
+	if close_tex:
+		close_rect.texture = close_tex
+	else:
+		push_error("Close icon missing: " + ICON_CLOSE)
+	close_rect.custom_minimum_size = Vector2(16, 16)
+	close_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	close_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	close_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	close_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	close_rect.gui_input.connect(_on_close_icon_input)
+	title_row.add_child(close_rect)
+
+	col.add_child(_make_spacer(16))
+
+	# --- Music ---
+	var music_lbl := Label.new()
+	music_lbl.text = "Music"
+	_apply_label_style(music_lbl, FONT_SIZE_LABEL, COLOR_GRAY)
+	col.add_child(music_lbl)
+
+	col.add_child(_make_spacer(12))
+
+	var music_toggle := _make_toggle_group(music_enabled, _on_music_toggle)
+	col.add_child(music_toggle)
+
+	col.add_child(_make_spacer(16))
+
+	# --- Sound Effect ---
+	var sfx_lbl := Label.new()
+	sfx_lbl.text = "Sound Effect"
+	_apply_label_style(sfx_lbl, FONT_SIZE_LABEL, COLOR_GRAY)
+	col.add_child(sfx_lbl)
+
+	col.add_child(_make_spacer(12))
+
+	var sfx_toggle := _make_toggle_group(sfx_enabled, _on_sfx_toggle)
+	col.add_child(sfx_toggle)
+
+	col.add_child(_make_spacer(16))
+
+	# --- Go Back to Menu (hidden for now) ---
+	var back_btn := _make_button("GO BACK TO MENU", COLOR_SECONDARY, ICON_HOUSE)
+	back_btn.pressed.connect(_on_back_to_menu)
+	back_btn.visible = false
+	col.add_child(back_btn)
+
+
+func _on_dimmer_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_close_settings()
+
+func _on_close_icon_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_play_click()
+		_close_settings()
+
+func _on_back_to_menu() -> void:
+	_close_settings()
+
+func _on_music_toggle(is_on: bool) -> void:
+	music_enabled = is_on
+	if music_player:
+		music_player.stream_paused = not is_on
+
+func _on_sfx_toggle(is_on: bool) -> void:
+	sfx_enabled = is_on
+
+func _open_settings() -> void:
+	settings_modal.visible = true
+	settings_modal.modulate.a = 0.0
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(settings_modal, "modulate:a", 1.0, 0.2)
+
+func _close_settings() -> void:
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(settings_modal, "modulate:a", 0.0, 0.15)
+	tw.tween_callback(func(): settings_modal.visible = false)

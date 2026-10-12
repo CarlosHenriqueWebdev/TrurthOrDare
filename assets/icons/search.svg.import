@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cnqih6o65qxid"
-path="res://.godot/imported/TruthOrDareLogo.png-2cad0509a6e7bd800f9369ce00894a29.ctex"
+uid="uid://b1xtygxhcn6if"
+path="res://.godot/imported/search.svg-f3b07499bcb2671519bb3db72df2d393.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/TruthOrDareLogo.png"
-dest_files=["res://.godot/imported/TruthOrDareLogo.png-2cad0509a6e7bd800f9369ce00894a29.ctex"]
+source_file="res://assets/icons/search.svg"
+dest_files=["res://.godot/imported/search.svg-f3b07499bcb2671519bb3db72df2d393.ctex"]
 
 [params]
 
@@ -38,3 +38,6 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
+svg/scale=4.0
+editor/scale_with_editor_scale=false
+editor/convert_colors_with_editor_theme=false

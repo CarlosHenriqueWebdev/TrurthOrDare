@@ -34,6 +34,12 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
 
+[importer_defaults]
+
+texture={
+&"svg/scale": 4.0
+}
+
 [rendering]
 
 renderer/rendering_method="mobile"
