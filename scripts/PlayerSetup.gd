@@ -198,7 +198,7 @@ func _build_player_list_box() -> BorderedBox:
 	title_row.add_child(t_spacer)
 
 	_player_count_label = Label.new()
-	_player_count_label.text = "0 / %d" % MAX_PLAYERS
+	_player_count_label.text = "Players 0 / %d" % MAX_PLAYERS
 	Design.apply_label(_player_count_label, 10, Design.GRAY)
 	_player_count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_row.add_child(_player_count_label)
@@ -264,7 +264,7 @@ func _update_controls() -> void:
 			Design.GLOBAL_CONTENT_BORDER if enough else Design.TERTIARY
 		)
 	if _player_count_label:
-		_player_count_label.text = "%d / %d" % [_players.size(), MAX_PLAYERS]
+		_player_count_label.text = "Players %d / %d" % [_players.size(), MAX_PLAYERS]
 
 
 func _refresh_add_button_color() -> void:
