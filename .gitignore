@@ -1,9 +1,6 @@
-# Godot 4+ specific ignores
+# Godot-generated files
 .godot/
-/android/
+godot/editor/
+android/
 builds/
-editor/
 export_credentials.cfg
-godot/editor/editor_layout.cfg
-godot/editor/filesystem_cache10
-godot/editor/filesystem_update4
