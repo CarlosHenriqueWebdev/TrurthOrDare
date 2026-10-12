@@ -16,13 +16,15 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="TruthOrDareTest"
 run/main_scene="uid://datfr07ouxa0p"
+config/use_hidden_project_data_directory=false
 config/features=PackedStringArray("4.7", "Mobile")
-config/icon="res://icon.svg"
+config/icon="uid://bcc1otbed6n1d"
 
 [autoload]
 
 GameState="*res://autoload/GameState.gd"
 DataManager="*res://autoload/DataManager.gd"
+Design="*uid://dbywptlvdek3g"
 
 [display]
 
