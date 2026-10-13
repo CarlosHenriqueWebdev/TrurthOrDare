@@ -3,38 +3,35 @@ extends Node
 # --- Colors ---
 const BLACK := Color("#000000")
 const WHITE := Color("#fffade")
-const GRAY := Color("#83808e")
+const GRAY := Color("#9A97A6")
 const TRANSPARENT_BLACK := Color("#000000cc")
-const PRIMARY := Color("#393772")
+const PRIMARY := Color("#282650")
 const BUTTON_BORDER := Color("#00000059")
-const SECONDARY := Color("#702224")
-const TERTIARY := Color("#7a111d")
-const FOURTH := Color("#aca3e9")
-const INNER_BORDER := Color("#292746")
-const GLOBAL_CONTENT_BORDER := Color("#534e8c")
-const FIVE := Color("#25265e")
-const SIX := Color("#161638")
-const SEVEN := Color("#c04143")
-const EIGHT := Color("#005a36")
+const SECONDARY := Color("#550c14")
+const TERTIARY := Color("#4e1819")
+const FOURTH := Color("#7872A3")
+const INNER_BORDER := Color("#1D1B31")
+const GLOBAL_CONTENT_BORDER := Color("#3A3762")
+const FIVE := Color("#23244b")
+const SIX := Color("#21223d")
+const SEVEN := Color("#8f3638")
+const EIGHT := Color("#09482f")
 const DISABLED := Color("#2c2b30")
 
-# Error text — bright red, high contrast on black.
 const ERROR_TEXT := Color("#ff5c5c")
 
-# --- Category Colors (badge backgrounds) ---
 const CATEGORY_COLORS := {
 	"sober":  SECONDARY,
 	"tipsy":  PRIMARY,
 	"drunk":  TERTIARY,
-	"wasted": FIVE,
+	"wasted": EIGHT,
 }
 
-# --- Category Display Colors (footer text; bright for contrast on black) ---
 const ODDS_DISPLAY_COLORS := {
-	"sober":  Color("#4fc3c6"),
+	"sober":  Color("#e0a0a8"),
 	"tipsy":  Color("#b8a8f0"),
 	"drunk":  Color("#e87878"),
-	"wasted": Color("#7da3e8"),
+	"wasted": Color("#6fc494"),
 }
 
 # --- Layout ---
@@ -99,7 +96,6 @@ const GAME_BG_PATH    := "res://assets/GameBackground.png"
 const TRUTH_TITLE_PATH := "res://assets/TruthTitle.svg"
 const DARE_TITLE_PATH  := "res://assets/DareTitle.svg"
 
-# Cached resources
 var font: FontFile
 var font_variation: FontVariation
 
@@ -142,8 +138,6 @@ func apply_label(lbl: Label, font_size: int, color: Color = WHITE) -> void:
 	lbl.add_theme_color_override("font_color", color)
 
 
-# Apply markup-aware Merienda fonts to a RichTextLabel.
-# [b] uses ExtraBold, [i] uses Light (Merienda has no true italic).
 func apply_rich(rich: RichTextLabel, font_size: int, color: Color = WHITE) -> void:
 	rich.bbcode_enabled = true
 	rich.add_theme_font_size_override("normal_font_size", font_size)
@@ -155,6 +149,5 @@ func apply_rich(rich: RichTextLabel, font_size: int, color: Color = WHITE) -> vo
 		rich.add_theme_font_override("bold_italics_font", font_merienda_bold_var)
 	if font_merienda_light_var:
 		rich.add_theme_font_override("italics_font", font_merienda_light_var)
-	# Fall back to FugazOne if Merienda failed to load
 	if not font_merienda_var and font_variation:
 		rich.add_theme_font_override("normal_font", font_variation)

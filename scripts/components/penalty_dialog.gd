@@ -45,10 +45,15 @@ func _build() -> void:
 	_modal.set_content(col)
 
 	# Open the first group by default and never let it close.
+	# Auto-select its first sub-option.
 	if not _sections.is_empty():
-		_open_group = _sections[0]["group"]
+		var first: Dictionary = _sections[0]
+		_open_group = first["group"]
 		_refresh_visibility()
 		_refresh_arrows()
+		var labels: Array = DataManager.pass_groups.get(first["group"], [])
+		if not labels.is_empty():
+			_selection = {"group": first["group"], "label": labels[0]}
 		_refresh_checkboxes()
 
 

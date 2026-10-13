@@ -147,7 +147,7 @@ func _build_footer(root: VBoxContainer) -> void:
 	_info_rich.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(_info_rich)
 
-	_forfeit_btn = StyledButton.create("FORFEIT", Design.TERTIARY, Design.ICON_FORFEIT)
+	_forfeit_btn = StyledButton.create("FORFEIT", Design.PRIMARY, Design.ICON_FORFEIT)
 	_forfeit_btn.pressed.connect(_on_forfeit)
 	col.add_child(_forfeit_btn)
 

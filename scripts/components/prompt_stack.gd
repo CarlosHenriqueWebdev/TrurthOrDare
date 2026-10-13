@@ -28,8 +28,6 @@ func _build(card: Control) -> void:
 	call_deferred("_start_draw_animation")
 
 
-# Use the same 3-layer BorderedBox the real card uses so the ghosts
-# have a black background and matching border stack.
 func _make_ghost() -> BorderedBox:
 	var ghost := BorderedBox.create(18)
 	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -41,8 +39,6 @@ func _start_draw_animation() -> void:
 	_play_draw()
 
 
-# "Drawn from the pile" feel: card scales up from the top-right corner
-# (toward the ghost pile), rotating into place with a slight overshoot.
 func _play_draw() -> void:
 	if not is_instance_valid(_card):
 		return
@@ -69,17 +65,20 @@ func _layout() -> void:
 	if not is_instance_valid(_card):
 		return
 	var pad := OFFSET_STEP * LAYERS
-	var card_size := Vector2(maxf(0.0, size.x - pad), maxf(0.0, size.y - pad))
+	# Card fills width, sits at the bottom of the reserved slot.
 	_card.position = Vector2(0, pad)
-	_card.size = card_size
+	_card.size = Vector2(size.x, size.y - pad)
+	# Ghosts step up-right, right edges aligned with the card's right edge.
 	for ghost in _ghosts:
 		var layer: int = ghost.get_meta("layer", 1)
-		ghost.position = Vector2(layer * OFFSET_STEP, pad - layer * OFFSET_STEP)
-		ghost.size = card_size
+		var inset := layer * OFFSET_STEP
+		ghost.position = Vector2(inset, pad - inset)
+		ghost.size = Vector2(size.x - inset, size.y - pad)
 
 
 func _get_minimum_size() -> Vector2:
 	if is_instance_valid(_card):
 		var m := _card.get_combined_minimum_size()
-		return m + Vector2(OFFSET_STEP * LAYERS, OFFSET_STEP * LAYERS)
-	return Vector2(100, 100)
+		# Only reserve vertical space; never widen the parent.
+		return Vector2(m.x, m.y + OFFSET_STEP * LAYERS)
+	return Vector2(100, 116)

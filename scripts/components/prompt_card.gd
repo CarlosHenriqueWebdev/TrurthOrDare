@@ -66,6 +66,6 @@ func _build_prompt(kind: String, text: String, show_view: bool) -> void:
 		add_full(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))
 		add_spacer(16)
 
-		var btn := StyledButton.create("VIEW / COPY TEXT", Design.PRIMARY, Design.ICON_COPY, Design.BUTTON_HEIGHT, false, false, true)
+		var btn := StyledButton.create("VIEW / COPY TEXT", Design.TERTIARY, Design.ICON_COPY, Design.BUTTON_HEIGHT, false, false, true)
 		btn.pressed.connect(func(): copy_requested.emit())
 		add_with_margins(btn, 16, 0, 16, 16)

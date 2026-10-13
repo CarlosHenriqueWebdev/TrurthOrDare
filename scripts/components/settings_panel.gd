@@ -61,8 +61,8 @@ func _build(show_back_to_menu: bool) -> void:
 	add_child(sfx_tg)
 
 	if show_back_to_menu:
-		add_child(_make_spacer(16))
-		var back_btn := StyledButton.create("GO BACK TO MENU", Design.TERTIARY, Design.ICON_HOUSE)
+		add_child(_make_spacer(20))
+		var back_btn := StyledButton.create("GO BACK TO MENU", Design.SECONDARY, Design.ICON_HOUSE)
 		back_btn.pressed.connect(func(): back_to_menu_requested.emit())
 		add_child(back_btn)
 

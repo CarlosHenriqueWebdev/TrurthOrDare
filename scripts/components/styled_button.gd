@@ -119,6 +119,11 @@ func _build(text: String, bg_color: Color, icon_path: String, height: int, icon_
 	if hug:
 		custom_minimum_size.x = _compute_hug_width(text, icon_only, font_size, padding_h, icon_size)
 
+	# Secondary buttons get a light sweep so the primary action reads as
+	# more prominent without moving or resizing the button.
+	if bg_color == Design.SECONDARY:
+		ShineSweep.attach_to(self)
+
 	resized.connect(func(): pivot_offset = size / 2)
 	mouse_entered.connect(_animate_scale.bind(self, Design.HOVER_SCALE, Design.HOVER_TIME))
 	mouse_exited.connect(_animate_scale.bind(self, 1.0, Design.HOVER_TIME))
