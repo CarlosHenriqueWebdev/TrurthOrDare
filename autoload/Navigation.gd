@@ -7,7 +7,6 @@ extends Node
 const HOME := "res://scenes/Home.tscn"
 const PLAYER_SETUP := "res://scenes/PlayerSetup.tscn"
 const GAME         := "res://scenes/Game.tscn"
-const PREVIEW      := "res://scenes/Preview.tscn"
 
 var current_path: String = ""
 

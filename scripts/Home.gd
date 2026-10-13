@@ -3,6 +3,7 @@ extends Control
 var _header: AppHeader
 var _footer: AppFooter
 var _settings_modal: Modal
+var _preview_modal: PreviewModal
 
 
 func _ready() -> void:
@@ -33,6 +34,9 @@ func _build() -> void:
 	_settings_modal.set_content(settings_panel)
 	add_child(_settings_modal)
 
+	_preview_modal = PreviewModal.create()
+	add_child(_preview_modal)
+
 
 func _build_background() -> void:
 	if ResourceLoader.exists(Design.BG_PATH):
@@ -61,7 +65,8 @@ func _connect_click_sounds(node: Node) -> void:
 func _on_footer_button(id: String) -> void:
 	match id:
 		"preview":
-			Navigation.go_to(Navigation.PREVIEW)
+			AudioManager.play_click()
+			_preview_modal.open()
 		"start":
 			Navigation.go_to(Navigation.PLAYER_SETUP)
 
