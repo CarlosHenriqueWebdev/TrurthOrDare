@@ -23,6 +23,7 @@ config/icon="uid://bcc1otbed6n1d"
 [autoload]
 
 WindowManager="*uid://coj0g1rno0vmv"
+SaveManager="*uid://bywfw33v4nq8f"
 GameState="*res://autoload/GameState.gd"
 DataManager="*res://autoload/DataManager.gd"
 Design="*uid://dbywptlvdek3g"
@@ -48,5 +49,4 @@ texture={
 
 [rendering]
 
-renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true

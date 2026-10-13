@@ -32,8 +32,8 @@ func show_message(text: String, duration := 2.0, is_error := false) -> void:
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layer.add_child(strip)
 
-	var border_color := Design.TERTIARY if is_error else Design.GLOBAL_CONTENT_BORDER
-	var text_color := Design.TERTIARY if is_error else Design.WHITE
+	var border_color := Design.ERROR_TEXT if is_error else Design.GLOBAL_CONTENT_BORDER
+	var text_color := Design.ERROR_TEXT if is_error else Design.WHITE
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE

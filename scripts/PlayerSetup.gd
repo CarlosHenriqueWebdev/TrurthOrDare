@@ -20,6 +20,7 @@ var _player_count_label: Label
 
 
 func _ready() -> void:
+	_players = SaveManager.get_players()
 	_build()
 	_connect_click_sounds(self)
 	_refresh()
@@ -134,7 +135,7 @@ func _build_add_player_box() -> BorderedBox:
 
 	_hint_label = Label.new()
 	_hint_label.text = "Enter at least 2 players"
-	Design.apply_label(_hint_label, 10, Design.TERTIARY)
+	Design.apply_label(_hint_label, 10, Design.ERROR_TEXT)
 	_hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_row.add_child(_hint_label)
 
@@ -261,7 +262,7 @@ func _update_controls() -> void:
 	if _hint_label:
 		_hint_label.add_theme_color_override(
 			"font_color",
-			Design.GLOBAL_CONTENT_BORDER if enough else Design.TERTIARY
+			Design.GLOBAL_CONTENT_BORDER if enough else Design.ERROR_TEXT
 		)
 	if _player_count_label:
 		_player_count_label.text = "Players %d / %d" % [_players.size(), MAX_PLAYERS]
@@ -321,6 +322,7 @@ func _on_add_player() -> void:
 	_add_error = false
 	_refresh_add_button_color()
 	_refresh()
+	SaveManager.set_players(_players)
 	AudioManager.play_success()
 	ToastManager.show_message("Added " + raw)
 
@@ -331,6 +333,7 @@ func _on_remove_player(index: int) -> void:
 	var removed := _players[index]
 	_players.remove_at(index)
 	_refresh()
+	SaveManager.set_players(_players)
 	AudioManager.play_success()
 	ToastManager.show_message("Removed " + removed)
 
@@ -344,8 +347,8 @@ func _on_footer_button(id: String) -> void:
 				AudioManager.play_error()
 				ToastManager.show_message("Need at least 2 players", 2.0, true)
 				return
-			# TODO: navigate to Game scene once it exists
-			print("Start game with: ", _players)
+			GameState.start_game(_players)
+			Navigation.go_to(Navigation.GAME)
 
 
 func _randomize_order() -> void:
@@ -374,6 +377,7 @@ func _randomize_order() -> void:
 
 	_players = result
 	_refresh()
+	SaveManager.set_players(_players)
 	AudioManager.play_success()
 	ToastManager.show_message("Player order shuffled")
 

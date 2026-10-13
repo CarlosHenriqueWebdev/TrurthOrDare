@@ -8,6 +8,7 @@ class_name StyledButton extends Button
 #   compact  -> small variant: font 9, padding 10, icon 16 (used with hug)
 
 var _bg_color: Color
+var _icon_node: TextureRect
 # Set true to prevent auto-wired click SFX (used when the button
 # should play a success/error sound instead).
 var suppress_click_sound := false
@@ -19,20 +20,21 @@ static func create(
 	icon_path := Design.ICON_CHEVRON,
 	height := Design.BUTTON_HEIGHT,
 	hug := false,
-	compact := false
+	compact := false,
+	center_content := false
 ) -> StyledButton:
 	var btn := StyledButton.new()
-	btn._build(text, bg_color, icon_path, height, false, hug, compact)
+	btn._build(text, bg_color, icon_path, height, false, hug, compact, center_content)
 	return btn
 
 
 static func create_icon_only(icon_path: String, bg_color: Color, height := Design.BUTTON_HEIGHT) -> StyledButton:
 	var btn := StyledButton.new()
-	btn._build("", bg_color, icon_path, height, true, true, false)
+	btn._build("", bg_color, icon_path, height, true, true, false, true)
 	return btn
 
 
-func _build(text: String, bg_color: Color, icon_path: String, height: int, icon_only: bool, hug: bool, compact: bool) -> void:
+func _build(text: String, bg_color: Color, icon_path: String, height: int, icon_only: bool, hug: bool, compact: bool, center_content: bool) -> void:
 	_bg_color = bg_color
 	custom_minimum_size = Vector2(0, height)
 	focus_mode = Control.FOCUS_NONE
@@ -74,7 +76,7 @@ func _build(text: String, bg_color: Color, icon_path: String, height: int, icon_
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 0)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if icon_only:
+	if icon_only or center_content:
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(row)
 
@@ -84,15 +86,19 @@ func _build(text: String, bg_color: Color, icon_path: String, height: int, icon_
 		Design.apply_label(lbl, font_size)
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		# Hug: don't claim extra space. Regular: push the icon to the right.
-		lbl.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if hug else Control.SIZE_EXPAND_FILL
+		if center_content or hug:
+			lbl.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		else:
+			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(lbl)
 
 		var gap := Control.new()
-		gap.custom_minimum_size = Vector2(8, 0)
-		# Hug: fixed 8px gap. Regular: absorbs width, icon pinned right.
-		gap.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if hug else Control.SIZE_EXPAND_FILL
+		gap.custom_minimum_size = Vector2(12 if center_content else 8, 0)
+		if center_content or hug:
+			gap.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		else:
+			gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(gap)
 
@@ -108,6 +114,7 @@ func _build(text: String, bg_color: Color, icon_path: String, height: int, icon_
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon)
+	_icon_node = icon
 
 	if hug:
 		custom_minimum_size.x = _compute_hug_width(text, icon_only, font_size, padding_h, icon_size)
@@ -156,6 +163,16 @@ func set_disabled_visual(is_disabled: bool) -> void:
 func set_bg_color(color: Color) -> void:
 	_bg_color = color
 	_apply_style(disabled)
+
+
+# Swap the trailing icon at runtime.
+func set_icon(path: String) -> void:
+	if not _icon_node:
+		return
+	if not ResourceLoader.exists(path):
+		push_warning("Icon not found: " + path)
+		return
+	_icon_node.texture = load(path)
 
 
 static func _animate_scale(node: Control, target: float, time: float) -> void:

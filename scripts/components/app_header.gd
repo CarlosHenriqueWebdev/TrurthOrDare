@@ -1,6 +1,7 @@
 class_name AppHeader extends VBoxContainer
 
-# Top app bar with settings and logo. Emits `settings_pressed`.
+# Top app bar. Settings on the left, logo on the right.
+# Emits `settings_pressed` when the settings row is tapped.
 
 signal settings_pressed
 

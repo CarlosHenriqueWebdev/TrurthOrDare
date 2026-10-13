@@ -6,6 +6,7 @@ extends Node
 
 const HOME := "res://scenes/Home.tscn"
 const PLAYER_SETUP := "res://scenes/PlayerSetup.tscn"
+const GAME         := "res://scenes/Game.tscn"
 
 var current_path: String = ""
 
