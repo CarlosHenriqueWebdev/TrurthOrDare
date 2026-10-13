@@ -18,7 +18,11 @@ config/name="TruthOrDare"
 run/main_scene="uid://datfr07ouxa0p"
 config/use_hidden_project_data_directory=false
 config/features=PackedStringArray("4.7", "Mobile")
+boot_splash/bg_color=Color(0, 0, 0, 1)
+boot_splash/stretch_mode=4
+boot_splash/image="uid://842qrj763sbn"
 config/icon="uid://bcc1otbed6n1d"
+boot_splash/minimum_display_time=400
 
 [autoload]
 

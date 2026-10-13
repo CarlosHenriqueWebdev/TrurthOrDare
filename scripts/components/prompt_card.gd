@@ -67,5 +67,6 @@ func _build_prompt(kind: String, text: String, show_view: bool) -> void:
 		add_spacer(16)
 
 		var btn := StyledButton.create("VIEW / COPY TEXT", Design.TERTIARY, Design.ICON_COPY, Design.BUTTON_HEIGHT, false, false, true)
+		btn.pressed.connect(AudioManager.play_click)
 		btn.pressed.connect(func(): copy_requested.emit())
 		add_with_margins(btn, 16, 0, 16, 16)

@@ -40,6 +40,7 @@ func _build() -> void:
 	content_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content_margin.add_theme_constant_override("margin_left",  16)
 	content_margin.add_theme_constant_override("margin_right", 16)
+    content_margin.add_theme_constant_override("margin_bottom", 16)
 	root.add_child(content_margin)
 
 	_content_col = VBoxContainer.new()
