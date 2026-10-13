@@ -19,10 +19,10 @@ static func create(radius := 18.0) -> BorderedBox:
 	return box
 
 
-static func create_circle(size: float) -> BorderedBox:
+static func create_circle(diameter: float) -> BorderedBox:
 	var box := BorderedBox.new()
 	box._build(999)
-	box.custom_minimum_size = Vector2(size, size)
+	box.custom_minimum_size = Vector2(diameter, diameter)
 	return box
 
 

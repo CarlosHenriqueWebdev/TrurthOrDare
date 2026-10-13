@@ -7,13 +7,13 @@ const AVATAR_GAP  := 12
 const ROW_HEIGHT  := 58
 
 
-static func create(player_name: String, position: int) -> PlayerRow:
+static func create(player_name: String, slot: int) -> PlayerRow:
 	var row := PlayerRow.new()
-	row._build(player_name, position)
+	row._build(player_name, slot)
 	return row
 
 
-func _build(player_name: String, position: int) -> void:
+func _build(player_name: String, slot: int) -> void:
 	custom_minimum_size = Vector2(0, ROW_HEIGHT)
 	add_theme_constant_override("separation", 0)
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -26,7 +26,7 @@ func _build(player_name: String, position: int) -> void:
 	add_child(gap)
 
 	var name_lbl := Label.new()
-	name_lbl.text = _ordinal(position) + " " + player_name
+	name_lbl.text = _ordinal(slot) + " " + player_name
 	Design.apply_label(name_lbl, Design.FONT_SIZE_LABEL)
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER

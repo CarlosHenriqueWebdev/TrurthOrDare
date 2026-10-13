@@ -1,28 +1,24 @@
 class_name Avatar extends Control
 
-# Player initial avatar with a shader-masked image and 3 concentric rings.
-# create_circle(size)  -> perfect circle (PlayerRow)
-# create_rounded(size, radius_px) -> rounded square (CurrentPlayerBox)
-
 const ROUNDED_SHADER := "shader_type canvas_item;\nuniform float radius_uv = 0.22;\nvoid fragment() {\n\tvec2 p = abs(UV - 0.5);\n\tvec2 d = p - (vec2(0.5) - vec2(radius_uv));\n\tfloat dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - radius_uv;\n\tfloat aa = fwidth(dist) * 0.5;\n\tfloat alpha = 1.0 - smoothstep(-aa, aa, dist);\n\tvec4 tex = texture(TEXTURE, UV);\n\ttex.a *= alpha;\n\tCOLOR = tex;\n}"
 
 const CIRCLE_SHADER := "shader_type canvas_item;\nvoid fragment() {\n\tvec4 tex = texture(TEXTURE, UV);\n\tvec2 centered = UV - vec2(0.5);\n\tfloat dist = length(centered);\n\tfloat aa = fwidth(dist) * 1.5;\n\tfloat alpha = 1.0 - smoothstep(0.5 - aa, 0.5, dist);\n\ttex.a *= alpha;\n\tCOLOR = tex;\n}"
 
 
-static func create_circle(player_name: String, size: float) -> Avatar:
+static func create_circle(player_name: String, avatar_size: float) -> Avatar:
 	var a := Avatar.new()
-	a._build(player_name, size, 999, true)
+	a._build(player_name, avatar_size, 999, true)
 	return a
 
 
-static func create_rounded(player_name: String, size: float, radius_px: float) -> Avatar:
+static func create_rounded(player_name: String, avatar_size: float, radius_px: float) -> Avatar:
 	var a := Avatar.new()
-	a._build(player_name, size, int(radius_px), false)
+	a._build(player_name, avatar_size, int(radius_px), false)
 	return a
 
 
-func _build(player_name: String, size: float, radius: int, is_circle: bool) -> void:
-	custom_minimum_size = Vector2(size, size)
+func _build(player_name: String, avatar_size: float, radius: int, is_circle: bool) -> void:
+	custom_minimum_size = Vector2(avatar_size, avatar_size)
 	size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	clip_contents = true
 
@@ -52,8 +48,7 @@ func _build(player_name: String, size: float, radius: int, is_circle: bool) -> v
 		shader.code = CIRCLE_SHADER if is_circle else ROUNDED_SHADER
 		mat.shader = shader
 		if not is_circle:
-			# radius as UV fraction of the shorter side
-			mat.set_shader_parameter("radius_uv", float(radius) / size)
+			mat.set_shader_parameter("radius_uv", float(radius) / avatar_size)
 		tex.material = mat
 		img_host.add_child(tex)
 	else:
@@ -71,14 +66,13 @@ func _build(player_name: String, size: float, radius: int, is_circle: bool) -> v
 
 		var lbl := Label.new()
 		lbl.text = letter
-		Design.apply_label(lbl, int(size * 0.38))
+		Design.apply_label(lbl, int(avatar_size * 0.38))
 		lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		img_host.add_child(lbl)
 
-	# 3 rings drawn on top of the image
 	add_child(_make_ring(Design.GLOBAL_CONTENT_BORDER, 0, radius))
 	add_child(_make_ring(Design.BLACK, 2, max(radius - 2, 0)))
 	add_child(_make_ring(Design.INNER_BORDER, 4, max(radius - 4, 0)))

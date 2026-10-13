@@ -425,10 +425,10 @@ func _format_name(raw: String) -> String:
 		words.append(first + rest)
 	return " ".join(words)
 
-func _starts_with_letter(name: String) -> bool:
-	if name.is_empty():
+func _starts_with_letter(player_name: String) -> bool:
+	if player_name.is_empty():
 		return false
-	var c := name.substr(0, 1).to_upper()
+	var c := player_name.substr(0, 1).to_upper()
 	return c >= "A" and c <= "Z"
 
 

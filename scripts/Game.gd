@@ -178,6 +178,7 @@ func _refresh() -> void:
 		child.queue_free()
 
 	if GameState.game_over:
+		AudioManager.play_game_over()
 		var over := _make_game_over_panel()
 		_prompt_area.add_child(over)
 		_animate_in(over, 0.0)

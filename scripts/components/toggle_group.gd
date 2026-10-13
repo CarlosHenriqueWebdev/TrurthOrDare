@@ -32,10 +32,10 @@ func _build(initial: bool) -> void:
 	set_on(initial, false)
 
 
-func set_on(is_on: bool, emit_signal := true) -> void:
+func set_on(is_on: bool, should_emit := true) -> void:
 	_off_btn.set_active(not is_on)
 	_on_btn.set_active(is_on)
-	if emit_signal:
+	if should_emit:
 		changed.emit(is_on)
 
 

@@ -19,11 +19,13 @@ var _error_players: Array[AudioStreamPlayer] = []
 var _success_players: Array[AudioStreamPlayer] = []
 var _card_flip_players: Array[AudioStreamPlayer] = []
 var _penalty_players: Array[AudioStreamPlayer] = []
+var _game_over_players: Array[AudioStreamPlayer] = []
 var _click_index := 0
 var _error_index := 0
 var _success_index := 0
 var _card_flip_index := 0
 var _penalty_index := 0
+var _game_over_index := 0
 
 
 func _ready() -> void:
@@ -57,6 +59,7 @@ func _setup_sfx() -> void:
 	_success_players   = _make_pool(Design.SFX_SUCCESS_PATH,   -6.0)
 	_card_flip_players = _make_pool(Design.SFX_CARD_FLIP_PATH, -8.0)
 	_penalty_players   = _make_pool(Design.SFX_PENALTY_PATH,   -6.0)
+	_game_over_players = _make_pool(Design.SFX_GAME_OVER_PATH, -6.0)
 
 
 func _make_pool(path: String, volume_db: float) -> Array[AudioStreamPlayer]:
@@ -91,6 +94,9 @@ func play_card_flip() -> void:
 func play_penalty() -> void:
 	_play_pool(_penalty_players, "penalty")
 
+func play_game_over() -> void:
+	_play_pool(_game_over_players, "game_over")
+
 
 func _play_pool(players: Array[AudioStreamPlayer], kind: String) -> void:
 	if not sfx_enabled or players.is_empty():
@@ -102,6 +108,7 @@ func _play_pool(players: Array[AudioStreamPlayer], kind: String) -> void:
 		"success":   idx = _success_index;   _success_index   = (_success_index   + 1) % players.size()
 		"card_flip": idx = _card_flip_index; _card_flip_index = (_card_flip_index + 1) % players.size()
 		"penalty":   idx = _penalty_index;   _penalty_index   = (_penalty_index   + 1) % players.size()
+		"game_over": idx = _game_over_index; _game_over_index = (_game_over_index + 1) % players.size()
 		_: return
 	var p := players[idx]
 	p.stop()

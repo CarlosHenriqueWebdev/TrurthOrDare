@@ -4,13 +4,13 @@ var _active: bool = false
 var _locked: bool = false
 
 
-static func create(text: String) -> ToggleButton:
+static func create(label_text: String) -> ToggleButton:
 	var btn := ToggleButton.new()
-	btn._build(text)
+	btn._build(label_text)
 	return btn
 
 
-func _build(text: String) -> void:
+func _build(label_text: String) -> void:
 	custom_minimum_size = Vector2(0, Design.BUTTON_HEIGHT)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	focus_mode = Control.FOCUS_NONE
@@ -33,7 +33,7 @@ func _build(text: String) -> void:
 	add_child(border)
 
 	var lbl := Label.new()
-	lbl.text = text
+	lbl.text = label_text
 	lbl.name = "ToggleLabel"
 	Design.apply_label(lbl, Design.FONT_SIZE_BTN)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

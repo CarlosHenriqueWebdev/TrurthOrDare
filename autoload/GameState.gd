@@ -145,7 +145,10 @@ func cards_remaining() -> int:
 func _effective_round() -> int:
 	if players.is_empty():
 		return 1
-	return 1 + (cards_played / players.size())
+	# Integer division is intentional — we want the whole-round count.
+	@warning_ignore("integer_division")
+	var r := cards_played / players.size()
+	return 1 + r
 
 
 func _has_unused(kind: String) -> bool:

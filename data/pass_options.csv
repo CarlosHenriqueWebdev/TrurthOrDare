@@ -1,8 +1,26 @@
 group,label
-Drink,Beer
-Drink,Wine
-Drink,Spirits
-Custom 1,Skip next turn
-Custom 1,Tell a secret
-Custom 2,Do a shot
-Custom 2,Buy the next round
+Drink,Drink a beer
+Drink,Drink a glass of wine
+Drink,Take a sip of your drink
+Drink,Take a shot
+Drink,Let the group choose your next drink
+Truth,Reveal an embarrassing story
+Truth,Share your biggest secret
+Truth,Reveal your celebrity crush
+Truth,Show your last used emoji
+Truth,Answer any question honestly
+Dare,Do your best impression of someone
+Dare,Sing a song for 30 seconds
+Dare,Dance without music for 20 seconds
+Dare,Speak in an accent for two rounds
+Dare,Let the group give you a funny nickname
+Social,Give someone a genuine compliment
+Social,Let the group choose your profile picture for 10 minutes
+Social,Tell the group your first impression of someone
+Social,Send a funny meme to a friend
+Social,Speak only in questions for one round
+Game Penalty,Skip your next turn
+Game Penalty,Lose one point
+Game Penalty,Do two dares instead of one
+Game Penalty,Let the group choose your next challenge
+Game Penalty,Answer the next truth question with no passing
