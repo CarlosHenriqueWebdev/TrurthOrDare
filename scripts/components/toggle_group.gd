@@ -39,6 +39,12 @@ func set_on(is_on: bool, emit_signal := true) -> void:
 		changed.emit(is_on)
 
 
+# Lock the toggle: swap to the disabled color, ignore clicks.
+func set_locked(locked: bool) -> void:
+	_off_btn.set_locked(locked)
+	_on_btn.set_locked(locked)
+
+
 func _on_off_pressed() -> void:
 	set_on(false)
 

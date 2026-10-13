@@ -102,22 +102,24 @@ func _build(text: String, bg_color: Color, icon_path: String, height: int, icon_
 		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(gap)
 
-	var icon := TextureRect.new()
-	var tex := load(icon_path)
-	if tex:
-		icon.texture = tex
-	else:
-		push_error("Icon failed to load: " + icon_path)
-	icon.custom_minimum_size = Vector2(icon_size, icon_size)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(icon)
-	_icon_node = icon
+	var has_icon := not icon_path.is_empty()
+	if has_icon:
+		var icon := TextureRect.new()
+		var tex := load(icon_path)
+		if tex:
+			icon.texture = tex
+		else:
+			push_error("Icon failed to load: " + icon_path)
+		icon.custom_minimum_size = Vector2(icon_size, icon_size)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(icon)
+		_icon_node = icon
 
 	if hug:
-		custom_minimum_size.x = _compute_hug_width(text, icon_only, font_size, padding_h, icon_size)
+		custom_minimum_size.x = _compute_hug_width(text, icon_only, font_size, padding_h, icon_size, has_icon)
 
 	# Secondary buttons get a light sweep so the primary action reads as
 	# more prominent without moving or resizing the button.
@@ -131,7 +133,7 @@ func _build(text: String, bg_color: Color, icon_path: String, height: int, icon_
 	button_up.connect(_animate_scale.bind(self, 1.0, Design.PRESS_TIME))
 
 
-func _compute_hug_width(text: String, icon_only: bool, font_size: int, padding_h: int, icon_size: int) -> float:
+func _compute_hug_width(text: String, icon_only: bool, font_size: int, padding_h: int, icon_size: int, has_icon: bool = true) -> float:
 	if icon_only:
 		return float(padding_h * 2 + icon_size)
 	var text_w := 0.0
@@ -139,7 +141,8 @@ func _compute_hug_width(text: String, icon_only: bool, font_size: int, padding_h
 		text_w = Design.font_variation.get_string_size(
 			text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size
 		).x
-	return float(padding_h * 2) + ceil(text_w) + 8.0 + float(icon_size)
+	var icon_part := (8.0 + float(icon_size)) if has_icon else 0.0
+	return float(padding_h * 2) + ceil(text_w) + icon_part
 
 
 func _apply_style(is_disabled: bool) -> void:
@@ -155,6 +158,13 @@ func _apply_style(is_disabled: bool) -> void:
 	add_theme_stylebox_override("pressed",  sb)
 	add_theme_stylebox_override("focus",    sb)
 	add_theme_stylebox_override("disabled", sb)
+	# Force white label color when disabled regardless of prior state.
+	add_theme_color_override("font_disabled_color", Design.WHITE)
+	if is_disabled:
+		for child in get_children():
+			for sub in child.get_children():
+				if sub is Label:
+					sub.add_theme_color_override("font_color", Design.WHITE)
 
 
 func set_disabled_visual(is_disabled: bool) -> void:
@@ -162,6 +172,10 @@ func set_disabled_visual(is_disabled: bool) -> void:
 	_apply_style(is_disabled)
 	if is_disabled:
 		scale = Vector2.ONE
+	# Hide the shine sweep when the button is disabled.
+	for child in get_children():
+		if child is ShineSweep:
+			child.visible = not is_disabled
 
 
 # Change the base fill color while respecting the current disabled state.

@@ -27,12 +27,9 @@ const CATEGORY_COLORS := {
 	"wasted": EIGHT,
 }
 
-const ODDS_DISPLAY_COLORS := {
-	"sober":  Color("#e0a0a8"),
-	"tipsy":  Color("#b8a8f0"),
-	"drunk":  Color("#e87878"),
-	"wasted": Color("#6fc494"),
-}
+# How much to lighten CATEGORY_COLORS to get readable text on black.
+# Higher = brighter but less saturated. Tune to taste (0.0 – 1.0).
+const ODDS_LIGHTEN := 0.45
 
 # --- Layout ---
 const SIDE_PADDING     := 16
@@ -87,10 +84,13 @@ const ICON_REMOVE     := "res://assets/icons/remove.svg"
 const ICON_COPY       := "res://assets/icons/copy.svg"
 const ICON_FORFEIT    := "res://assets/icons/forfeit.svg"
 const ICON_ARROW_DOWN       := "res://assets/icons/arrow_down.svg"
-const ICON_ARROW_UP         := "res://assets/icons/arrow_up.svg"
+const ICON_OPEN_CATEGORY         := "res://assets/icons/open_category.svg"
 const ICON_CHECKBOX         := "res://assets/icons/checkbox.svg"
 const ICON_CHECKBOX_CHECKED := "res://assets/icons/checkbox_checked.svg"
 const ICON_RESTART          := "res://assets/icons/restart.svg"
+const ICON_CSV              := "res://assets/icons/csv.svg"
+
+const DEFAULT_CARDS_PATH := "res://data/cards.csv"
 
 const GAME_BG_PATH    := "res://assets/GameBackground.png"
 const TRUTH_TITLE_PATH := "res://assets/TruthTitle.svg"
@@ -137,6 +137,11 @@ func apply_label(lbl: Label, font_size: int, color: Color = WHITE) -> void:
 	lbl.add_theme_constant_override("line_spacing", LINE_SPACING_PX)
 	lbl.add_theme_color_override("font_color", color)
 
+# Readable version of a category's color for text on black.
+# Derived from CATEGORY_COLORS so palette changes propagate.
+func odds_color(category: String) -> Color:
+	var base: Color = CATEGORY_COLORS.get(category, GRAY)
+	return base.lightened(ODDS_LIGHTEN)
 
 func apply_rich(rich: RichTextLabel, font_size: int, color: Color = WHITE) -> void:
 	rich.bbcode_enabled = true

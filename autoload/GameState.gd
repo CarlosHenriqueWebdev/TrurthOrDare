@@ -67,10 +67,18 @@ func advance() -> void:
 		return
 	if game_over:
 		return
+	cards_played += 1
+	# If the next roll would end the game, keep the current player's turn
+	# so the game-over screen doesn't show a different name.
+	if is_game_complete():
+		game_over = true
+		current_text = ""
+		current_long_text = ""
+		state_changed.emit()
+		return
 	current_index += 1
 	if current_index >= players.size():
 		current_index = 0
-	cards_played += 1
 	_roll_prompt()
 	state_changed.emit()
 
@@ -113,7 +121,13 @@ func category_percentages() -> Dictionary:
 	return out
 
 
+func is_endless() -> bool:
+	return SaveManager.get_endless_mode()
+
+
 func is_game_complete() -> bool:
+	if is_endless():
+		return false
 	var t_total := DataManager.truths.size()
 	var d_total := DataManager.dares.size()
 	if t_total + d_total == 0:
@@ -122,6 +136,8 @@ func is_game_complete() -> bool:
 
 
 func cards_remaining() -> int:
+	if is_endless():
+		return -1  # -1 signals "unlimited" to the UI
 	return (DataManager.truths.size() - _used_truth_ids.size()) \
 		+ (DataManager.dares.size() - _used_dare_ids.size())
 
@@ -133,6 +149,8 @@ func _effective_round() -> int:
 
 
 func _has_unused(kind: String) -> bool:
+	if is_endless():
+		return DataManager.get_prompts_by_type(kind).size() > 0
 	var pool := DataManager.get_prompts_by_type(kind)
 	var used := _used_ids_for(kind)
 	return used.size() < pool.size()
@@ -145,26 +163,29 @@ func _used_ids_for(kind: String) -> Dictionary:
 func _pick_prompt(kind: String, category: String) -> Dictionary:
 	var pool := DataManager.get_prompts_by_type(kind)
 	var used := _used_ids_for(kind)
+	var endless := is_endless()
 
-	# Preferred: unused + matching category
+	# Preferred: matching category (unused in normal mode, any in endless)
 	var candidates: Array[int] = []
 	for i in pool.size():
-		if used.has(i):
+		if not endless and used.has(i):
 			continue
 		if pool[i].get("category", "") == category:
 			candidates.append(i)
 
-	# Fallback: unused + any category
+	# Fallback: any card (unused in normal mode)
 	if candidates.is_empty():
 		for i in pool.size():
-			if not used.has(i):
-				candidates.append(i)
+			if not endless and used.has(i):
+				continue
+			candidates.append(i)
 
 	if candidates.is_empty():
 		return {}
 
 	var idx: int = candidates[randi() % candidates.size()]
-	used[idx] = true
+	if not endless:
+		used[idx] = true
 	return pool[idx]
 
 
@@ -184,7 +205,6 @@ func _roll_prompt() -> void:
 
 	var entry := _pick_prompt(current_type, current_category)
 	if entry.is_empty():
-		# Chosen type exhausted — try the other one
 		var other := "dare" if current_type == "truth" else "truth"
 		entry = _pick_prompt(other, current_category)
 		if not entry.is_empty():

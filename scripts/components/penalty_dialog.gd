@@ -153,7 +153,7 @@ func _refresh_arrows() -> void:
 	for s in _sections:
 		var is_open: bool = s["group"] == _open_group
 		var header: StyledButton = s["header"]
-		header.set_icon(Design.ICON_ARROW_UP if is_open else Design.ICON_ARROW_DOWN)
+		header.set_icon(Design.ICON_OPEN_CATEGORY if is_open else Design.ICON_ARROW_DOWN)
 
 
 func _select(group_name: String, label: String) -> void:

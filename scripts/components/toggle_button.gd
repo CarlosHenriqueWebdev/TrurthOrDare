@@ -1,7 +1,8 @@
 class_name ToggleButton extends Button
 
-# One half of a ToggleGroup. Text centered, no icon.
-# Use ToggleGroup for the paired on/off behavior.
+var _active: bool = false
+var _locked: bool = false
+
 
 static func create(text: String) -> ToggleButton:
 	var btn := ToggleButton.new()
@@ -49,8 +50,25 @@ func _build(text: String) -> void:
 
 
 func set_active(is_active: bool) -> void:
-	var bg := Design.FIVE if is_active else Design.SIX
-	var text_color := Design.WHITE if is_active else Design.GRAY
+	_active = is_active
+	if _locked:
+		_apply_locked_style()
+	else:
+		_apply_normal_style()
+
+
+func set_locked(locked: bool) -> void:
+	_locked = locked
+	disabled = locked
+	if locked:
+		_apply_locked_style()
+	else:
+		_apply_normal_style()
+
+
+func _apply_normal_style() -> void:
+	var bg := Design.FIVE if _active else Design.SIX
+	var text_color := Design.WHITE if _active else Design.GRAY
 
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
@@ -58,11 +76,30 @@ func set_active(is_active: bool) -> void:
 	sb.corner_radius_top_right    = Design.BUTTON_RADIUS
 	sb.corner_radius_bottom_left  = Design.BUTTON_RADIUS
 	sb.corner_radius_bottom_right = Design.BUTTON_RADIUS
-	add_theme_stylebox_override("normal",  sb)
-	add_theme_stylebox_override("hover",   sb)
-	add_theme_stylebox_override("pressed", sb)
-	add_theme_stylebox_override("focus",   sb)
+	add_theme_stylebox_override("normal",   sb)
+	add_theme_stylebox_override("hover",    sb)
+	add_theme_stylebox_override("pressed",  sb)
+	add_theme_stylebox_override("focus",    sb)
+	add_theme_stylebox_override("disabled", sb)
 
 	var lbl := get_node_or_null("ToggleLabel") as Label
 	if lbl:
 		lbl.add_theme_color_override("font_color", text_color)
+
+
+func _apply_locked_style() -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Design.DISABLED
+	sb.corner_radius_top_left     = Design.BUTTON_RADIUS
+	sb.corner_radius_top_right    = Design.BUTTON_RADIUS
+	sb.corner_radius_bottom_left  = Design.BUTTON_RADIUS
+	sb.corner_radius_bottom_right = Design.BUTTON_RADIUS
+	add_theme_stylebox_override("normal",   sb)
+	add_theme_stylebox_override("hover",    sb)
+	add_theme_stylebox_override("pressed",  sb)
+	add_theme_stylebox_override("focus",    sb)
+	add_theme_stylebox_override("disabled", sb)
+
+	var lbl := get_node_or_null("ToggleLabel") as Label
+	if lbl:
+		lbl.add_theme_color_override("font_color", Design.WHITE)

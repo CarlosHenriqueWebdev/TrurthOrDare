@@ -79,7 +79,7 @@ func _build() -> void:
 	_build_footer(root)
 
 	_settings_modal = Modal.create()
-	var settings_panel := SettingsPanel.create(true)
+	var settings_panel := SettingsPanel.create(true, true, true)
 	settings_panel.close_requested.connect(_settings_modal.close)
 	settings_panel.back_to_menu_requested.connect(_on_back_to_menu)
 	_settings_modal.set_content(settings_panel)
@@ -206,24 +206,26 @@ func _update_info() -> void:
 	var d := int(round(GameState.dare_chance_for_current() * 100.0))
 	var p := GameState.category_percentages()
 
-	var c_sober  := Design.ODDS_DISPLAY_COLORS["sober"].to_html(false)
-	var c_tipsy  := Design.ODDS_DISPLAY_COLORS["tipsy"].to_html(false)
-	var c_drunk  := Design.ODDS_DISPLAY_COLORS["drunk"].to_html(false)
-	var c_wasted := Design.ODDS_DISPLAY_COLORS["wasted"].to_html(false)
+	var c_sober  := Design.odds_color("sober").to_html(false)
+	var c_tipsy  := Design.odds_color("tipsy").to_html(false)
+	var c_drunk  := Design.odds_color("drunk").to_html(false)
+	var c_wasted := Design.odds_color("wasted").to_html(false)
 
 	var green := Design.GLOBAL_CONTENT_BORDER.to_html(false)
 	var orange := Design.SEVEN.to_html(false)
 
+	var remaining := GameState.cards_remaining()
+	var remaining_text := "∞" if remaining < 0 else str(remaining) + " left"
 	_info_rich.text = \
 		"Card %02d   Chances [color=#%s]T %d%%[/color] / [color=#%s]D %d%%[/color]\n" % [
 			GameState.cards_played, green, t, orange, d,
 		] + \
-		"Odds [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]   (%d left)" % [
+		"Odds [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]   (%s)" % [
 			c_sober,  p.get("sober", 0),
 			c_tipsy,  p.get("tipsy", 0),
 			c_drunk,  p.get("drunk", 0),
 			c_wasted, p.get("wasted", 0),
-			GameState.cards_remaining(),
+			remaining_text,
 		]
 
 
@@ -295,7 +297,7 @@ func _on_complete() -> void:
 
 
 func _on_restart() -> void:
-	AudioManager.play_success()
+	AudioManager.play_click()
 	GameState.restart()
 	_refresh()
 
@@ -310,6 +312,7 @@ func _on_settings_pressed() -> void:
 
 
 func _on_back_to_menu() -> void:
+	AudioManager.play_click()
 	if _settings_modal and _settings_modal.visible:
 		_settings_modal.close()
 	Navigation.go_home()

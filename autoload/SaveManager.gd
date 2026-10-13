@@ -38,6 +38,47 @@ func get_audio(key: String, default_value: bool) -> bool:
 	return bool(_config.get_value("audio", key, default_value))
 
 
+# --- CSV display paths (for showing the user what they uploaded) ---
+
+func get_cards_display_path() -> String:
+	return str(_config.get_value("csv", "cards_display", ""))
+
+
+func set_cards_display_path(path: String) -> void:
+	_config.set_value("csv", "cards_display", path)
+	_save()
+
+
+func clear_cards_display_path() -> void:
+	_config.set_value("csv", "cards_display", "")
+	_save()
+
+
+func get_pass_display_path() -> String:
+	return str(_config.get_value("csv", "penalty_display", ""))
+
+
+func set_pass_display_path(path: String) -> void:
+	_config.set_value("csv", "penalty_display", path)
+	_save()
+
+
+func clear_pass_display_path() -> void:
+	_config.set_value("csv", "penalty_display", "")
+	_save()
+
+
+# --- Gameplay ---
+
+func get_endless_mode() -> bool:
+	return bool(_config.get_value("gameplay", "endless", false))
+
+
+func set_endless_mode(value: bool) -> void:
+	_config.set_value("gameplay", "endless", value)
+	_save()
+
+
 func set_audio(key: String, value: bool) -> void:
 	_config.set_value("audio", key, value)
 	_save()
