@@ -35,6 +35,8 @@ const ODDS_LIGHTEN := 0.45
 const MAX_PENALTY_GROUPS        := 6
 const MAX_PENALTY_OPTIONS_GROUP := 6
 const MAX_TOAST_WIDTH           := 320
+# Character cap for penalty group names and sub-option labels.
+const MAX_PENALTY_LABEL_CHARS   := 28
 
 # --- Layout ---
 const SIDE_PADDING     := 16

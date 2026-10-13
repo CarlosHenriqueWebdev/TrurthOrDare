@@ -103,7 +103,8 @@ func _make_title_row() -> HBoxContainer:
 
 
 func _make_section(group_name: String) -> Dictionary:
-	var header := StyledButton.create(group_name.to_upper(), Design.FIVE, Design.ICON_ARROW_DOWN)
+	var header_label := _truncate_label(group_name.to_upper())
+	var header := StyledButton.create(header_label, Design.FIVE, Design.ICON_ARROW_DOWN)
 	header.pressed.connect(func(): _toggle_group(group_name))
 
 	var sub_box := BorderedBox.create(12)
@@ -131,7 +132,8 @@ func _make_section(group_name: String) -> Dictionary:
 
 
 func _make_option_row(group_name: String, label: String) -> StyledButton:
-	var btn := StyledButton.create(label, Design.SIX, Design.ICON_CHECKBOX, SUB_OPTION_HEIGHT)
+	var display := _truncate_label(label)
+	var btn := StyledButton.create(display, Design.SIX, Design.ICON_CHECKBOX, SUB_OPTION_HEIGHT)
 	btn.suppress_click_sound = true
 	btn.pressed.connect(func():
 		AudioManager.play_click()
@@ -190,3 +192,11 @@ func _spacer(h: int) -> Control:
 	s.custom_minimum_size = Vector2(0, h)
 	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return s
+
+# Truncate a label so it can't push the button too wide.
+# Only used for user-uploaded penalty names and options.
+func _truncate_label(text: String) -> String:
+	var limit := Design.MAX_PENALTY_LABEL_CHARS
+	if text.length() <= limit:
+		return text
+	return text.substr(0, limit).strip_edges() + "..."
