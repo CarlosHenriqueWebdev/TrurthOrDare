@@ -1,3 +1,8 @@
+## Global toast overlay.
+##
+## Screens call ToastManager.show_message(text, duration, is_error) to
+## surface transient feedback. Only one toast is visible at a time —
+## a new message cancels the previous one.
 extends Node
 
 # Global toast overlay. Screens call ToastManager.show_message("...").

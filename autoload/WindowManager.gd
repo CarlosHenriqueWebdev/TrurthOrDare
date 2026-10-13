@@ -1,4 +1,8 @@
-
+## Desktop window sizing.
+##
+## On launch, resizes the OS window to match the target portrait aspect
+## ratio, fits it inside the usable screen area, and centres it near the
+## top edge. No-op on mobile, which handles its own window.
 extends Node
 
 func _ready() -> void:

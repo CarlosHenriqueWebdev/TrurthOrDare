@@ -1,3 +1,8 @@
+## Scene router.
+##
+## Screens call Navigation.go_to(path) instead of change_scene_to_file()
+## so routing lives in one place and can be extended later (transitions,
+## history, etc.) without touching every screen.
 extends Node
 
 # Scene router. Screens call Navigation.go_to(path) instead of

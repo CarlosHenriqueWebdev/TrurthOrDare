@@ -1,3 +1,9 @@
+## Central audio playback.
+##
+## Owns the looping music player plus four-player pools for each one-shot
+## SFX (click, error, success, card flip, penalty, game over). Pools let
+## rapid sounds layer instead of cutting each other off. Preferences
+## (music/sfx on/off) persist through SaveManager.
 extends Node
 
 # Central audio. Music player + pools of one-shot SFX players.

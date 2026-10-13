@@ -18,19 +18,8 @@ func _ready() -> void:
 		Navigation.go_to(Navigation.PLAYER_SETUP)
 		return
 	_build()
-	_connect_click_sounds(self)
+	UiUtils.connect_click_sounds(self)
 	_refresh()
-
-
-func _connect_click_sounds(node: Node) -> void:
-	for child in node.get_children():
-		if child is StyledButton:
-			if not child.suppress_click_sound:
-				child.pressed.connect(AudioManager.play_click)
-		elif child is Button:
-			child.pressed.connect(AudioManager.play_click)
-		_connect_click_sounds(child)
-
 
 func _build() -> void:
 	_build_background()

@@ -8,7 +8,7 @@ var _preview_modal: PreviewModal
 
 func _ready() -> void:
 	_build()
-	_connect_click_sounds(self)
+	UiUtils.connect_click_sounds(self)
 
 
 func _build() -> void:
@@ -53,14 +53,6 @@ func _build_background() -> void:
 		c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(c)
-
-
-func _connect_click_sounds(node: Node) -> void:
-	for child in node.get_children():
-		if child is Button:
-			child.pressed.connect(AudioManager.play_click)
-		_connect_click_sounds(child)
-
 
 func _on_footer_button(id: String) -> void:
 	match id:

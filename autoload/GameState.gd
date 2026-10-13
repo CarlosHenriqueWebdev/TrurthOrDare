@@ -1,3 +1,8 @@
+## Runtime state for a game session.
+##
+## Tracks the player list, current turn, round counter, and the currently
+## rolled prompt. Owns the chance model: per-player truth/dare balance and
+## per-round category escalation. Fires state_changed when anything moves.
 extends Node
 
 signal state_changed

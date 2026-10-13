@@ -1,3 +1,8 @@
+## Design tokens and helpers.
+##
+## Single source of truth for colors, sizes, typography, motion, paths.
+## Also provides apply_label() / apply_rich() / odds_color() so screens
+## never touch Theme resources directly.
 extends Node
 
 # --- Colors ---

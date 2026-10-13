@@ -22,7 +22,7 @@ var _player_count_label: Label
 func _ready() -> void:
 	_players = SaveManager.get_players()
 	_build()
-	_connect_click_sounds(self)
+	UiUtils.connect_click_sounds(self)
 	_refresh()
 
 
@@ -30,17 +30,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _name_input and _name_input.has_focus():
 			_name_input.release_focus()
-
-
-func _connect_click_sounds(node: Node) -> void:
-	for child in node.get_children():
-		if child is StyledButton:
-			if not child.suppress_click_sound:
-				child.pressed.connect(AudioManager.play_click)
-		elif child is Button:
-			child.pressed.connect(AudioManager.play_click)
-		_connect_click_sounds(child)
-
 
 # =====================================================================
 # BUILD

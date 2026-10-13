@@ -1,3 +1,9 @@
+## Card and penalty data loader.
+##
+## Reads cards from one CSV (type,category,text) and penalty groups from
+## another (group,label). User uploads are copied to user:// so the game
+## owns its copy. Falls back to the bundled defaults on startup when no
+## upload exists.
 extends Node
 
 # Loads truths, dares, and pass options.

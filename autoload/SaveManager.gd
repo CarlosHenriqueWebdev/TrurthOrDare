@@ -1,3 +1,8 @@
+## Persistence layer.
+##
+## Reads and writes user://save.cfg for player names, audio toggles,
+## gameplay flags, and the display paths of uploaded CSVs. Register as
+## an autoload before AudioManager so audio prefs load first.
 extends Node
 
 # Persists player list + audio prefs to user://save.cfg.
