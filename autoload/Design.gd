@@ -31,6 +31,11 @@ const CATEGORY_COLORS := {
 # Higher = brighter but less saturated. Tune to taste (0.0 – 1.0).
 const ODDS_LIGHTEN := 0.45
 
+# --- Limits ---
+const MAX_PENALTY_GROUPS        := 6
+const MAX_PENALTY_OPTIONS_GROUP := 6
+const MAX_TOAST_WIDTH           := 320
+
 # --- Layout ---
 const SIDE_PADDING     := 16
 const BUTTON_GAP       := 16

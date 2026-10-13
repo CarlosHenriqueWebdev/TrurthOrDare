@@ -79,6 +79,9 @@ func _build(label_text: String, bg_color: Color, icon_path: String, height: int,
 			lbl.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		else:
 			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Truncate with ellipsis if the text won't fit.
+		lbl.clip_text = true
+		lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(lbl)
 

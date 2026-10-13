@@ -79,7 +79,11 @@ func load_pass_options(path: String) -> bool:
 		if group.to_lower().begins_with("header") or group.to_lower() == "group":
 			continue
 		if not new_groups.has(group):
+			if new_groups.size() >= Design.MAX_PENALTY_GROUPS:
+				continue
 			new_groups[group] = []
+		if new_groups[group].size() >= Design.MAX_PENALTY_OPTIONS_GROUP:
+			continue
 		new_groups[group].append(label)
 	f.close()
 	if new_groups.is_empty():
@@ -178,7 +182,11 @@ func _load_pass_options(path: String) -> void:
 		if group.to_lower().begins_with("header") or group.to_lower() == "group":
 			continue
 		if not pass_groups.has(group):
+			if pass_groups.size() >= Design.MAX_PENALTY_GROUPS:
+				continue
 			pass_groups[group] = []
+		if pass_groups[group].size() >= Design.MAX_PENALTY_OPTIONS_GROUP:
+			continue
 		pass_groups[group].append(label)
 	f.close()
 

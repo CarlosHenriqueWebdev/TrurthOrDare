@@ -28,6 +28,14 @@ func _build() -> void:
 	col.add_theme_constant_override("separation", 12)
 
 	col.add_child(_make_title_row())
+
+	var hint := Label.new()
+	hint.text = "Max %d groups · %d options each" % [
+		Design.MAX_PENALTY_GROUPS,
+		Design.MAX_PENALTY_OPTIONS_GROUP,
+	]
+	Design.apply_label(hint, 10, Design.GRAY)
+	col.add_child(hint)
 	col.add_child(_spacer(4))
 
 	var groups := DataManager.pass_groups.keys()

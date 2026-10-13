@@ -37,6 +37,7 @@ func show_message(text: String, duration := 2.0, is_error := false) -> void:
 
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(Design.BLACK.r, Design.BLACK.g, Design.BLACK.b, 0.95)
 	sb.border_width_left   = 2
@@ -59,6 +60,11 @@ func show_message(text: String, duration := 2.0, is_error := false) -> void:
 	lbl.text = text
 	Design.apply_label(lbl, 12, text_color)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	lbl.clip_text = true
+	lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Force a fixed inner width so long messages clip with "…".
+	lbl.custom_minimum_size.x = Design.MAX_TOAST_WIDTH - 32
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(lbl)
 
