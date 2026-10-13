@@ -1,6 +1,11 @@
-# Godot-generated files
+# Godot editor cache — both variants
 .godot/
-godot/editor/
+godot/
+
+# Auto-generated CSV translations
+data/*.translation
+EOF
+
 android/
 builds/
 export_credentials.cfg

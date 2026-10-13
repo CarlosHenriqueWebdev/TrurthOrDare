@@ -45,8 +45,10 @@ func _build_card(kind: String, text: String, category: String) -> void:
 	Design.apply_rich(rich, 24, Design.WHITE)
 	rich.add_theme_constant_override("line_separation", 4)
 	rich.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_with_margins(rich, 16, 0, 16, 16)
+	add_with_margins(rich, 16, 0, 16, 0)
 
-	# Divider + badge at the bottom
+	add_spacer(16)
 	add_full(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))
-	add_with_margins(CategoryBadge.create(category), 16, 16, 16, 16)
+	add_spacer(16)
+
+	add_with_margins(CategoryBadge.create(category), 16, 0, 16, 16)
