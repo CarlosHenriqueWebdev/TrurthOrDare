@@ -1,17 +1,15 @@
 class_name PreviewCard extends BorderedBox
 
 # Card shown in the Preview screen: title image, quoted prompt, divider,
-# category badge pinned to the bottom-left.
+# category badge at the bottom. Height fits its content.
 
-const CARD_HEIGHT := 356
-const TITLE_WIDTH := 152
+const TITLE_WIDTH  := 152
 const TITLE_HEIGHT := 42
 
 
 static func make(kind: String, text: String, category: String) -> PreviewCard:
 	var c := PreviewCard.new()
 	c._build(18)
-	c.custom_minimum_size = Vector2(0, CARD_HEIGHT)
 	c._build_card(kind, text, category)
 	return c
 
@@ -47,13 +45,7 @@ func _build_card(kind: String, text: String, category: String) -> void:
 	Design.apply_rich(rich, 24, Design.WHITE)
 	rich.add_theme_constant_override("line_separation", 4)
 	rich.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_with_margins(rich, 16, 0, 16, 0)
-
-	# Expanding filler so the divider + badge stick to the bottom.
-	var filler := Control.new()
-	filler.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	filler.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(filler)
+	add_with_margins(rich, 16, 0, 16, 16)
 
 	# Divider + badge at the bottom
 	add_full(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))

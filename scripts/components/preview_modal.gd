@@ -4,7 +4,9 @@ class_name PreviewModal extends Control
 # Truths first, then dares, each rendered as a PreviewCard.
 # Opens from Home's PREVIEW button.
 
-const SCROLL_MAX_HEIGHT := 560
+# Caps the modal's overall height. Individual cards now hug their own
+# content, so this just limits how tall the scroll window can get.
+const SCROLL_MAX_HEIGHT := 600
 
 var _modal: Modal
 
