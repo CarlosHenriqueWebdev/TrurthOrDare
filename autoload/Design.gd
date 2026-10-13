@@ -104,6 +104,9 @@ const GAME_BG_PATH    := "res://assets/GameBackground.png"
 const TRUTH_TITLE_PATH := "res://assets/TruthTitle.svg"
 const DARE_TITLE_PATH  := "res://assets/DareTitle.svg"
 
+const TRUTH_PREVIEW_TITLE_PATH := "res://assets/TruthPreviewTitle.svg"
+const DARE_PREVIEW_TITLE_PATH  := "res://assets/DarePreviewTitle.svg"
+
 var font: FontFile
 var font_variation: FontVariation
 

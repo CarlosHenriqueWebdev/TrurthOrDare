@@ -61,7 +61,7 @@ func _connect_click_sounds(node: Node) -> void:
 func _on_footer_button(id: String) -> void:
 	match id:
 		"preview":
-			print("Preview pressed")
+			Navigation.go_to(Navigation.PREVIEW)
 		"start":
 			Navigation.go_to(Navigation.PLAYER_SETUP)
 
