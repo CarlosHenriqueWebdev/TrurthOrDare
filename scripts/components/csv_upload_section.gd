@@ -33,11 +33,17 @@ func _build() -> void:
 
 	# Title
 	_title_label = Label.new()
-	_title_label.text = "Choose Upload Type"
-	Design.apply_label(_title_label, Design.FONT_SIZE_LABEL, Design.GRAY)
+	if OS.has_feature("android"):
+		_title_label.text = "Choose Upload Type — accept the permission prompt to browse files"
+	else:
+		_title_label.text = "Choose Upload Type"
 	if _locked:
 		_title_label.text = "Choose Upload Type (not available in game)"
+	_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	Design.apply_label(_title_label, Design.FONT_SIZE_LABEL, Design.GRAY)
 	inner.add_child(_title_label)
+
 
 	inner.add_child(_spacer(12))
 
@@ -47,10 +53,12 @@ func _build() -> void:
 	inner.add_child(radio_row)
 
 	_card_tab = ToggleButton.create("CARD")
+	_card_tab.suppress_click_sound = true
 	_card_tab.pressed.connect(func(): _select_mode(MODE_CARD))
 	radio_row.add_child(_card_tab)
 
 	_penalty_tab = ToggleButton.create("PENALTY")
+	_penalty_tab.suppress_click_sound = true
 	_penalty_tab.pressed.connect(func(): _select_mode(MODE_PENALTY))
 	radio_row.add_child(_penalty_tab)
 
@@ -146,12 +154,20 @@ func _load_current_path() -> void:
 
 
 func _open_file_dialog() -> void:
-	AudioManager.play_click()
+	if OS.has_feature("android"):
+		# Godot's permission check is broken for MANAGE_EXTERNAL_STORAGE.
+		# We request it (for the system prompt) but do NOT gate the dialog on it.
+		# The export preset already includes the permission.
+		var perm := "MANAGE_EXTERNAL_STORAGE"
+		if not OS.get_granted_permissions().has(perm):
+			OS.request_permissions()
+			# Small delay to let the system dialog appear, then open our dialog.
+			await get_tree().create_timer(0.5).timeout
+
 	_file_dialog.popup_centered_ratio(0.8)
 
 
 func _on_file_selected(path: String) -> void:
-	_path_input.text = path
 	_do_upload(path)
 
 
@@ -164,6 +180,7 @@ func _on_path_submitted(text: String) -> void:
 func _do_upload(path: String) -> void:
 	if _mode == MODE_CARD:
 		if DataManager.load_cards(path):
+			_path_input.text = path
 			AudioManager.play_success()
 			ToastManager.show_message("Cards loaded (copy saved)")
 		else:
@@ -171,6 +188,7 @@ func _do_upload(path: String) -> void:
 			ToastManager.show_message("Failed to load CSV", 2.0, true)
 	else:
 		if DataManager.load_pass_options(path):
+			_path_input.text = path
 			AudioManager.play_success()
 			ToastManager.show_message("Penalties loaded (copy saved)")
 		else:
@@ -244,6 +262,8 @@ func _show_format() -> void:
 
 	modal.set_content(col)
 	get_tree().current_scene.add_child(modal)
+	modal.closed.connect(modal.queue_free)
+	UiUtils.connect_click_sounds(modal)
 	modal.open()
 
 

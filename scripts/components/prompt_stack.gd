@@ -42,18 +42,17 @@ func _start_draw_animation() -> void:
 func _play_draw() -> void:
 	if not is_instance_valid(_card):
 		return
-	_card.pivot_offset = Vector2(_card.size.x, 0)
-	_card.scale = Vector2(0.72, 0.72)
-	_card.rotation = -0.10
+	_card.pivot_offset = Vector2.ZERO
+	_card.position.y += 24
 	_card.modulate.a = 0.0
 
+	var start_y := _card.position.y
+	var end_y := start_y - 24
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_card, "modulate:a", 1.0, 0.18)
-	tw.tween_property(_card, "scale", Vector2.ONE, 0.42)\
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_card, "rotation", 0.0, 0.42)\
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(_card, "modulate:a", 1.0, 0.22)
+	tw.tween_property(_card, "position:y", end_y, 0.42)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _notification(what: int) -> void:
@@ -80,5 +79,5 @@ func _get_minimum_size() -> Vector2:
 	if is_instance_valid(_card):
 		var m := _card.get_combined_minimum_size()
 		# Only reserve vertical space; never widen the parent.
-		return Vector2(m.x, m.y + OFFSET_STEP * LAYERS)
-	return Vector2(100, 116)
+		return Vector2(0, m.y + OFFSET_STEP * LAYERS)
+	return Vector2(0, 116)

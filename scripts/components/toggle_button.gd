@@ -2,6 +2,7 @@ class_name ToggleButton extends Button
 
 var _active: bool = false
 var _locked: bool = false
+var suppress_click_sound := false
 
 
 static func create(label_text: String) -> ToggleButton:

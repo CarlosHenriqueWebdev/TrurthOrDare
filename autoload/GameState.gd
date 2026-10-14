@@ -225,7 +225,6 @@ func _roll_prompt() -> void:
 		return
 
 	current_text = entry.get("text", "")
-	current_long_text = entry.get("long_text", "")
 
 	var s: Dictionary = _player_stats[player]
 	if current_type == "truth":

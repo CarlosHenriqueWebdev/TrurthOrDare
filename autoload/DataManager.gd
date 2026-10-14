@@ -71,7 +71,12 @@ func load_pass_options(path: String) -> bool:
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return false
-	f.get_line()  # skip header
+	# Peek at the header to catch a cards CSV mistakenly uploaded as a penalty CSV.
+	var header := f.get_line()
+	if header.findn("type") != -1 or header.findn("category") != -1:
+		push_warning("Not a penalty CSV (header looks like a cards file): " + path)
+		f.close()
+		return false
 	var new_groups: Dictionary = {}
 	while not f.eof_reached():
 		var line := f.get_line()

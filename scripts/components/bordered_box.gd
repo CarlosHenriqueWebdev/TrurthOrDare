@@ -27,6 +27,7 @@ static func create_circle(diameter: float) -> BorderedBox:
 
 
 func _build(radius: int) -> void:
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	var sb1 := StyleBoxFlat.new()
 	sb1.bg_color = Design.BLACK
 	_set_border(sb1, Design.GLOBAL_CONTENT_BORDER)

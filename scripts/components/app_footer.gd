@@ -23,6 +23,7 @@ func _build(buttons: Array) -> void:
 		add_child(AppHeader._make_line(c))
 
 	var content := Panel.new()
+	content.mouse_filter = Control.MOUSE_FILTER_PASS
 	content.custom_minimum_size = Vector2(0, Design.FOOTER_HEIGHT)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Design.BLACK

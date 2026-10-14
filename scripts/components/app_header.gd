@@ -17,6 +17,7 @@ func _build() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
 	var panel := Panel.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	panel.custom_minimum_size = Vector2(0, Design.HEADER_HEIGHT)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Design.BLACK

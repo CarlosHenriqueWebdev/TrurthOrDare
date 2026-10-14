@@ -57,7 +57,6 @@ func _build_background() -> void:
 func _on_footer_button(id: String) -> void:
 	match id:
 		"preview":
-			AudioManager.play_click()
 			_preview_modal.open()
 		"start":
 			Navigation.go_to(Navigation.PLAYER_SETUP)

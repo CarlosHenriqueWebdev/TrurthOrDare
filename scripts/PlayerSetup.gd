@@ -55,12 +55,14 @@ func _build() -> void:
 
 	var content_margin := MarginContainer.new()
 	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_margin.mouse_filter = Control.MOUSE_FILTER_PASS
 	content_margin.add_theme_constant_override("margin_left",  CONTENT_SIDE_PAD)
 	content_margin.add_theme_constant_override("margin_right", CONTENT_SIDE_PAD)
 	scroll.add_child(content_margin)
 
 	var content_col := VBoxContainer.new()
 	content_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_col.mouse_filter = Control.MOUSE_FILTER_PASS
 	content_col.add_theme_constant_override("separation", SECTION_GAP)
 	content_margin.add_child(content_col)
 
@@ -145,6 +147,9 @@ func _build_add_player_box() -> BorderedBox:
 	_name_input.max_length = NAME_MAX_LENGTH
 	_name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_name_input.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_name_input.focus_mode = Control.FOCUS_ALL
+	_name_input.mouse_filter = Control.MOUSE_FILTER_STOP
+	_name_input.virtual_keyboard_enabled = true
 	_style_line_edit_bare(_name_input)
 	_name_input.text_submitted.connect(_on_name_submitted)
 	_name_input.text_changed.connect(_on_name_changed)
@@ -249,6 +254,7 @@ func _update_controls() -> void:
 		_start_btn.set_disabled_visual(not enough)
 
 	if _hint_label:
+		_hint_label.text = "Ready to start" if enough else "Enter at least 2 players"
 		_hint_label.add_theme_color_override(
 			"font_color",
 			Design.GLOBAL_CONTENT_BORDER if enough else Design.ERROR_TEXT
@@ -268,6 +274,11 @@ func _refresh_add_button_color() -> void:
 # =====================================================================
 func _on_input_focus() -> void:
 	_name_input.placeholder_text = ""
+	if OS.has_feature("mobile"):
+		# Give the OS one frame to register the focus before asking for the
+		# keyboard. Without this delay Android sometimes ignores the request.
+		await get_tree().process_frame
+		DisplayServer.virtual_keyboard_show(_name_input.text)
 
 func _on_input_blur() -> void:
 	if _name_input.text.is_empty():
@@ -313,7 +324,7 @@ func _on_add_player() -> void:
 	_refresh()
 	SaveManager.set_players(_players)
 	AudioManager.play_success()
-	ToastManager.show_message("Added " + raw)
+	ToastManager.show_message("Added " + _format_name(raw))
 
 
 func _on_remove_player(index: int) -> void:

@@ -66,6 +66,17 @@ func _build() -> void:
 
 
 func open() -> void:
+	# Reset so each call starts fresh with the first group + its first option.
+	_selection = {"group": "", "label": ""}
+	if not _sections.is_empty():
+		var first: Dictionary = _sections[0]
+		_open_group = first["group"]
+		_refresh_visibility()
+		_refresh_arrows()
+		var labels: Array = DataManager.pass_groups.get(first["group"], [])
+		if not labels.is_empty():
+			_selection = {"group": first["group"], "label": labels[0]}
+		_refresh_checkboxes()
 	_modal.open()
 
 

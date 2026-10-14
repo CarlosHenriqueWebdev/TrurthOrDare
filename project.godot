@@ -14,19 +14,17 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="TruthOrDare"
+config/name="Truth Or Dare"
 run/main_scene="uid://datfr07ouxa0p"
 config/use_hidden_project_data_directory=false
 config/features=PackedStringArray("4.7", "Mobile")
 boot_splash/bg_color=Color(0, 0, 0, 1)
-boot_splash/stretch_mode=4
 boot_splash/image="uid://842qrj763sbn"
 config/icon="uid://bcc1otbed6n1d"
-boot_splash/minimum_display_time=400
+boot_splash/minimum_display_time=2000
 
 [autoload]
 
-WindowManager="*uid://coj0g1rno0vmv"
 SaveManager="*uid://bywfw33v4nq8f"
 GameState="*res://autoload/GameState.gd"
 DataManager="*res://autoload/DataManager.gd"
@@ -39,7 +37,6 @@ ToastManager="*uid://b5gqnlarvfiul"
 
 window/size/viewport_width=390
 window/size/viewport_height=844
-window/size/resizable=false
 window/size/transparent=true
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
@@ -54,6 +51,10 @@ enabled=PackedStringArray("res://addons/copy_all_errors/plugin.cfg")
 texture={
 &"svg/scale": 4.0
 }
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
 
 [rendering]
 

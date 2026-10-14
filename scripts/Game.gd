@@ -40,7 +40,7 @@ func _build() -> void:
 	content_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content_margin.add_theme_constant_override("margin_left",  16)
 	content_margin.add_theme_constant_override("margin_right", 16)
-    content_margin.add_theme_constant_override("margin_bottom", 16)
+	content_margin.add_theme_constant_override("margin_bottom", 16)
 	root.add_child(content_margin)
 
 	_content_col = VBoxContainer.new()
@@ -171,6 +171,7 @@ func _refresh() -> void:
 		AudioManager.play_game_over()
 		var over := _make_game_over_panel()
 		_prompt_area.add_child(over)
+		UiUtils.connect_click_sounds(self, over)
 		_animate_in(over, 0.0)
 	else:
 		_prompt_card = PromptCard.make(GameState.current_type, GameState.current_text)
@@ -253,6 +254,7 @@ func _make_game_over_panel() -> BorderedBox:
 func _animate_in(node: Control, delay: float) -> void:
 	node.modulate.a = 0.0
 	node.scale = Vector2(0.94, 0.94)
+	await get_tree().process_frame
 	node.pivot_offset = node.size / 2
 	var tw := create_tween()
 	tw.set_parallel(true)
@@ -288,7 +290,6 @@ func _on_complete() -> void:
 
 
 func _on_restart() -> void:
-	AudioManager.play_click()
 	GameState.restart()
 	_refresh()
 
@@ -303,7 +304,6 @@ func _on_settings_pressed() -> void:
 
 
 func _on_back_to_menu() -> void:
-	AudioManager.play_click()
 	if _settings_modal and _settings_modal.visible:
 		_settings_modal.close()
 	Navigation.go_home()
