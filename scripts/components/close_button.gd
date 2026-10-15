@@ -37,7 +37,6 @@ func _build() -> void:
 		push_error("Close icon missing: " + Design.ICON_CLOSE)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.modulate = Design.ERROR_TEXT
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.anchor_left   = 0.5
 	icon.anchor_top    = 0.5
@@ -49,9 +48,6 @@ func _build() -> void:
 	icon.offset_bottom =  ICON_SIZE / 2.0
 	add_child(icon)
 
-	resized.connect(func(): pivot_offset = size / 2)
-	mouse_entered.connect(StyledButton._animate_scale.bind(self, Design.HOVER_SCALE, Design.HOVER_TIME))
-	mouse_exited.connect(StyledButton._animate_scale.bind(self, 1.0, Design.HOVER_TIME))
 	gui_input.connect(_on_input)
 
 
