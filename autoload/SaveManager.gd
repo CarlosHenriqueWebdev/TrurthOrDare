@@ -84,6 +84,17 @@ func set_endless_mode(value: bool) -> void:
 	_save()
 
 
+# Streak balance: on by default. Adds +10% to the opposite type per
+# consecutive same-type draw so a player doesn't see three truths in a row.
+func get_streak_balance() -> bool:
+	return bool(_config.get_value("gameplay", "streak_balance", true))
+
+
+func set_streak_balance(value: bool) -> void:
+	_config.set_value("gameplay", "streak_balance", value)
+	_save()
+
+
 func set_audio(key: String, value: bool) -> void:
 	_config.set_value("audio", key, value)
 	_save()

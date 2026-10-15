@@ -4,13 +4,13 @@ signal close_requested
 signal back_to_menu_requested
 
 
-static func create(show_back_to_menu := false, lock_endless := false, lock_csv := false) -> SettingsPanel:
+static func create(show_back_to_menu := false, lock_endless := false, lock_csv := false, lock_streak := false) -> SettingsPanel:
 	var p := SettingsPanel.new()
-	p._build(show_back_to_menu, lock_endless, lock_csv)
+	p._build(show_back_to_menu, lock_endless, lock_csv, lock_streak)
 	return p
 
 
-func _build(show_back_to_menu: bool, lock_endless: bool, lock_csv: bool) -> void:
+func _build(show_back_to_menu: bool, lock_endless: bool, lock_csv: bool, lock_streak: bool) -> void:
 	add_theme_constant_override("separation", 0)
 
 	# Title row
@@ -60,6 +60,20 @@ func _build(show_back_to_menu: bool, lock_endless: bool, lock_csv: bool) -> void
 	if lock_endless:
 		endless_tg.set_locked(true)
 	add_child(endless_tg)
+
+	add_child(_make_spacer(16))
+
+	# Streak Balance — prevent repetitive streaks of the same type
+	var streak_label_text := "Streak Balance (avoid Truth/Dare streaks)"
+	if lock_streak:
+		streak_label_text = "Streak Balance (change in main menu)"
+	add_child(_make_section_label(streak_label_text))
+	add_child(_make_spacer(12))
+	var streak_tg := ToggleGroup.create(SaveManager.get_streak_balance())
+	streak_tg.changed.connect(func(is_on): SaveManager.set_streak_balance(is_on))
+	if lock_streak:
+		streak_tg.set_locked(true)
+	add_child(streak_tg)
 
 	add_child(_make_spacer(16))
 

@@ -70,7 +70,7 @@ func _build() -> void:
 	_build_footer(root)
 
 	_settings_modal = Modal.create()
-	var settings_panel := SettingsPanel.create(true, true, true)
+	var settings_panel := SettingsPanel.create(true, true, true, true)
 	settings_panel.close_requested.connect(_settings_modal.close)
 	settings_panel.back_to_menu_requested.connect(_on_back_to_menu)
 	_settings_modal.set_content(settings_panel)

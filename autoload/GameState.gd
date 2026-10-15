@@ -41,6 +41,8 @@ var current_long_text: String = ""
 var _player_stats: Dictionary = {}
 var _used_truth_ids: Dictionary = {}
 var _used_dare_ids: Dictionary = {}
+var _last_type_by_player: Dictionary = {}   # player -> "truth" | "dare"
+var _same_type_streak: Dictionary = {}      # player -> consecutive count of same type
 
 
 func start_game(player_names: Array[String]) -> void:
@@ -51,6 +53,8 @@ func start_game(player_names: Array[String]) -> void:
 	_player_stats.clear()
 	_used_truth_ids.clear()
 	_used_dare_ids.clear()
+	_last_type_by_player.clear()
+	_same_type_streak.clear()
 	for p in players:
 		_player_stats[p] = {"truths": 0, "dares": 0}
 	_roll_prompt()
@@ -99,7 +103,22 @@ func truth_chance_for_current() -> float:
 func dare_chance_for_current() -> float:
 	if players.is_empty():
 		return 0.5
-	var s: Dictionary = _player_stats.get(current_player(), {"truths": 0, "dares": 0})
+	return _dare_chance_for_player(current_player())
+
+
+func _dare_chance_for_player(player: String) -> float:
+	if SaveManager.get_streak_balance():
+		# Streak-based: the longer you've been on one type, the more likely
+		# the other type becomes. +10% per consecutive same-type draw.
+		var last: String = _last_type_by_player.get(player, "")
+		var streak: int = int(_same_type_streak.get(player, 0))
+		if last == "truth":
+			return clampf(0.5 + streak * 0.10, TYPE_CHANCE_MIN, TYPE_CHANCE_MAX)
+		if last == "dare":
+			return clampf(0.5 - streak * 0.10, TYPE_CHANCE_MIN, TYPE_CHANCE_MAX)
+		return 0.5
+	# Fallback: imbalance-based (legacy behaviour).
+	var s: Dictionary = _player_stats.get(player, {"truths": 0, "dares": 0})
 	var imbalance: int = s["truths"] - s["dares"]
 	return clampf(0.5 + imbalance * TYPE_BALANCE_FACTOR, TYPE_CHANCE_MIN, TYPE_CHANCE_MAX)
 
@@ -232,6 +251,8 @@ func _roll_prompt() -> void:
 	else:
 		s["dares"] += 1
 
+	_record_type_streak(player, current_type)
+
 
 func _roll_type(player: String) -> String:
 	var t_avail := _has_unused("truth")
@@ -243,10 +264,19 @@ func _roll_type(player: String) -> String:
 	if not d_avail:
 		return "truth"
 
-	var s: Dictionary = _player_stats.get(player, {"truths": 0, "dares": 0})
-	var imbalance: int = s["truths"] - s["dares"]
-	var dare_chance: float = clampf(0.5 + imbalance * TYPE_BALANCE_FACTOR, TYPE_CHANCE_MIN, TYPE_CHANCE_MAX)
+	var dare_chance := _dare_chance_for_player(player)
 	return "dare" if randf() < dare_chance else "truth"
+
+
+func _record_type_streak(player: String, type: String) -> void:
+	# Same type as last draw → streak +1. Different type → streak reset to 0.
+	# _last_type_by_player always records the new type, regardless.
+	var last: String = _last_type_by_player.get(player, "")
+	if last == type:
+		_same_type_streak[player] = int(_same_type_streak.get(player, 0)) + 1
+	else:
+		_same_type_streak[player] = 0
+	_last_type_by_player[player] = type
 
 
 func _roll_category() -> String:
