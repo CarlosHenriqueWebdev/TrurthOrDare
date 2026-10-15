@@ -19,29 +19,30 @@ func _build(buttons: Array) -> void:
 	add_theme_constant_override("separation", 0)
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
+	# Floor: the footer is at least Design.FOOTER_HEIGHT tall so screens with
+	# few buttons keep a consistent minimum, but it grows automatically when
+	# more buttons are added (e.g. Home's CONTINUE GAME + NEW GAME + PREVIEW).
+	custom_minimum_size.y = Design.FOOTER_HEIGHT
+
 	for c in [Design.GLOBAL_CONTENT_BORDER, Design.BLACK, Design.INNER_BORDER]:
 		add_child(AppHeader._make_line(c))
 
-	var content := Panel.new()
+	# PanelContainer sizes to its content — no fixed height, no clipping.
+	var content := PanelContainer.new()
 	content.mouse_filter = Control.MOUSE_FILTER_PASS
-	content.custom_minimum_size = Vector2(0, Design.FOOTER_HEIGHT)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Design.BLACK
+	sb.content_margin_left   = Design.SIDE_PADDING
+	sb.content_margin_right  = Design.SIDE_PADDING
+	sb.content_margin_top    = Design.SIDE_PADDING
+	sb.content_margin_bottom = Design.SIDE_PADDING
 	content.add_theme_stylebox_override("panel", sb)
 	add_child(content)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left",   Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_right",  Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_top",    Design.SIDE_PADDING)
-	margin.add_theme_constant_override("margin_bottom", Design.SIDE_PADDING)
-	content.add_child(margin)
 
 	var col := VBoxContainer.new()
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_theme_constant_override("separation", Design.BUTTON_GAP)
-	margin.add_child(col)
+	content.add_child(col)
 
 	for cfg in buttons:
 		var id: String = cfg.get("id", "")
