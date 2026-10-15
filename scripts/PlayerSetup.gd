@@ -44,6 +44,7 @@ func _build() -> void:
 
 	var header := AppHeader.create()
 	header.settings_pressed.connect(_on_settings_pressed)
+	header.logo_pressed.connect(_on_back_to_menu)
 	root.add_child(header)
 
 	root.add_child(_spacer(SECTION_GAP))

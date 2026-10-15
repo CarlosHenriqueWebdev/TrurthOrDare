@@ -19,10 +19,27 @@ func _build() -> void:
 	_header.settings_pressed.connect(_on_settings_pressed)
 	add_child(_header)
 
-	_footer = AppFooter.create([
-		{"id": "preview", "text": "PREVIEW TRUTHS & DARES", "color": Design.PRIMARY, "icon": Design.ICON_SEARCH},
-		{"id": "start",   "text": "START GAME",             "color": Design.SECONDARY},
-	])
+	var has_active_game := GameState.players.size() >= 2 and not GameState.game_over
+	var footer_buttons: Array = []
+	if has_active_game:
+		footer_buttons.append({
+			"id": "continue",
+			"text": "CONTINUE GAME",
+			"color": Design.SECONDARY,
+			"icon": Design.ICON_CHEVRON,
+		})
+	footer_buttons.append({
+		"id": "preview",
+		"text": "PREVIEW TRUTHS & DARES",
+		"color": Design.PRIMARY,
+		"icon": Design.ICON_SEARCH,
+	})
+	footer_buttons.append({
+		"id": "start",
+		"text": "NEW GAME" if has_active_game else "START GAME",
+		"color": Design.SECONDARY,
+	})
+	_footer = AppFooter.create(footer_buttons)
 	_footer.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_footer.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_footer.button_pressed.connect(_on_footer_button)
@@ -56,6 +73,8 @@ func _build_background() -> void:
 
 func _on_footer_button(id: String) -> void:
 	match id:
+		"continue":
+			Navigation.go_to(Navigation.GAME)
 		"preview":
 			_preview_modal.open()
 		"start":

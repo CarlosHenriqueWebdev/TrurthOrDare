@@ -4,6 +4,7 @@ class_name AppHeader extends VBoxContainer
 # Emits `settings_pressed` when the settings row is tapped.
 
 signal settings_pressed
+signal logo_pressed
 
 
 static func create() -> AppHeader:
@@ -42,7 +43,9 @@ func _build() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(spacer)
 
-	row.add_child(_make_logo())
+	var logo := _make_logo()
+	UiUtils.make_clickable(logo, func(): logo_pressed.emit())
+	row.add_child(logo)
 
 	for c in [Design.INNER_BORDER, Design.BLACK, Design.GLOBAL_CONTENT_BORDER]:
 		add_child(_make_line(c))
@@ -60,7 +63,6 @@ static func _make_logo() -> TextureRect:
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	logo.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return logo
 
 
