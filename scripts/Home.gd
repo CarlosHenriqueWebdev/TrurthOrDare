@@ -21,13 +21,16 @@ func _build() -> void:
 
 	var has_active_game := GameState.players.size() >= 2 and not GameState.game_over
 	var footer_buttons: Array = []
-	if has_active_game:
-		footer_buttons.append({
-			"id": "continue",
-			"text": "CONTINUE GAME",
-			"color": Design.EIGHT,
-			"icon": Design.ICON_CONTINUE,
-		})
+
+##  Commented out the "continue" button for now, since it was causing an lot of potential edge case scenarios. We can re-add it later if we want to support continuing a game from the home screen.
+## 	if has_active_game:
+## 		footer_buttons.append({
+## 			"id": "continue",
+## 			"text": "CONTINUE GAME",
+## 			"color": Design.EIGHT,
+## 			"icon": Design.ICON_CONTINUE,
+## 		})
+
 	footer_buttons.append({
 		"id": "preview",
 		"text": "PREVIEW TRUTHS & DARES",
