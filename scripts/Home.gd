@@ -25,8 +25,8 @@ func _build() -> void:
 		footer_buttons.append({
 			"id": "continue",
 			"text": "CONTINUE GAME",
-			"color": Design.SECONDARY,
-			"icon": Design.ICON_CHEVRON,
+			"color": Design.EIGHT,
+			"icon": Design.ICON_CONTINUE,
 		})
 	footer_buttons.append({
 		"id": "preview",
