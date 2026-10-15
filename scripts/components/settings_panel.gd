@@ -25,19 +25,9 @@ func _build(show_back_to_menu: bool, lock_endless: bool, lock_csv: bool) -> void
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_row.add_child(title)
 
-	var close_rect := TextureRect.new()
-	var close_tex := load(Design.ICON_CLOSE)
-	if close_tex:
-		close_rect.texture = close_tex
-	else:
-		push_error("Close icon missing: " + Design.ICON_CLOSE)
-	close_rect.custom_minimum_size = Vector2(16, 16)
-	close_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	close_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	close_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	close_rect.mouse_filter = Control.MOUSE_FILTER_STOP
-	close_rect.gui_input.connect(_on_close_input)
-	title_row.add_child(close_rect)
+	var close_btn := CloseButton.create()
+	close_btn.pressed.connect(func(): close_requested.emit())
+	title_row.add_child(close_btn)
 
 	add_child(_make_spacer(16))
 

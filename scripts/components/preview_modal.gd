@@ -98,23 +98,8 @@ func _make_title_row() -> HBoxContainer:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(title)
 
-	var close := TextureRect.new()
-	var tex := load(Design.ICON_CLOSE)
-	if tex:
-		close.texture = tex
-	else:
-		push_error("Close icon missing")
-	close.custom_minimum_size = Vector2(16, 16)
-	close.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	close.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	close.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	close.modulate = Design.ERROR_TEXT
-	close.mouse_filter = Control.MOUSE_FILTER_STOP
-	close.gui_input.connect(func(ev: InputEvent):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			AudioManager.play_click()
-			_modal.close()
-	)
+	var close := CloseButton.create()
+	close.pressed.connect(_modal.close)
 	row.add_child(close)
 	return row
 
