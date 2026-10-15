@@ -208,7 +208,7 @@ func _update_info() -> void:
 	var orange := Design.SEVEN.to_html(false)
 
 	var remaining := GameState.cards_remaining()
-	var remaining_text := "∞" if remaining < 0 else str(remaining) + " left"
+	var remaining_text := "∞" if remaining < 0 else str(remaining) + " rounds left"
 	_info_rich.text = \
 		"Card %02d   Chances [color=#%s]T %d%%[/color] / [color=#%s]D %d%%[/color]\n" % [
 			GameState.cards_played, green, t, orange, d,
