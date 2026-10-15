@@ -130,8 +130,11 @@ func _make_section(group_name: String) -> Dictionary:
 
 
 func _make_option_row(group_name: String, label: String) -> StyledButton:
+	# Groups are user-defined (uploaded via CSV), so we don't colour by
+	# group name. Selected / unselected is the only visual distinction —
+	# matches the ToggleButton pattern used elsewhere in settings.
 	var display := _truncate_label(label)
-	var btn := StyledButton.create(display, Design.SIX, Design.ICON_CHECKBOX, SUB_OPTION_HEIGHT)
+	var btn := StyledButton.create(display, Design.SIX, "", SUB_OPTION_HEIGHT)
 	btn.suppress_click_sound = true
 	btn.pressed.connect(func():
 		AudioManager.play_click()
@@ -140,7 +143,6 @@ func _make_option_row(group_name: String, label: String) -> StyledButton:
 	btn.set_meta("group", group_name)
 	btn.set_meta("label", label)
 	return btn
-
 
 func _toggle_group(group_name: String) -> void:
 	# Only-one-open, and never allow closing the active one.
@@ -182,7 +184,7 @@ func _refresh_checkboxes() -> void:
 				btn.get_meta("group") == _selection["group"]
 				and btn.get_meta("label") == _selection["label"]
 			)
-			btn.set_icon(Design.ICON_CHECKBOX_CHECKED if matched else Design.ICON_CHECKBOX)
+			btn.set_bg_color(Design.EIGHT if matched else Design.SIX)
 
 
 func _spacer(h: int) -> Control:
