@@ -53,6 +53,80 @@ var _last_rolled_weights: Dictionary = {}   # weights used for the currently dis
 var _last_rolled_bonus: float = 0.0         # escalation bonus applied to the current card
 
 
+# --- Session persistence ---
+
+# Serialise the full runtime state into a plain Dictionary. Used by
+# SessionState to persist a resumable snapshot after each turn.
+# Note: _used_truth_ids / _used_dare_ids have integer keys, which don't
+# round-trip cleanly through ConfigFile. They're stored as index arrays
+# and rebuilt on restore.
+func to_snapshot() -> Dictionary:
+	var t_indices: Array = _used_truth_ids.keys()
+	var d_indices: Array = _used_dare_ids.keys()
+	return {
+		"players": players.duplicate(),
+		"current_index": current_index,
+		"cards_played": cards_played,
+		"game_over": game_over,
+		"current_type": current_type,
+		"current_category": current_category,
+		"current_text": current_text,
+		"current_long_text": current_long_text,
+		"truths": DataManager.truths.duplicate(true),
+		"dares": DataManager.dares.duplicate(true),
+		"used_truth_indices": t_indices,
+		"used_dare_indices": d_indices,
+		"last_type_by_player": _last_type_by_player.duplicate(),
+		"same_type_streak": _same_type_streak.duplicate(),
+		"pending_escalation": _pending_escalation.duplicate(),
+		"last_rolled_weights": _last_rolled_weights.duplicate(),
+		"last_rolled_bonus": _last_rolled_bonus,
+		"player_stats": _player_stats.duplicate(true),
+	}
+
+
+# Restore the runtime state from a snapshot Dictionary. The deck itself
+# is overwritten so the resume uses the exact cards the match started
+# with, even if the CSVs on disk have changed since.
+func from_snapshot(data: Dictionary) -> void:
+	players.assign(data.get("players", []))
+	current_index = int(data.get("current_index", 0))
+	cards_played = int(data.get("cards_played", 0))
+	game_over = bool(data.get("game_over", false))
+	current_type = str(data.get("current_type", "truth"))
+	current_category = str(data.get("current_category", "sober"))
+	current_text = str(data.get("current_text", ""))
+	current_long_text = str(data.get("current_long_text", ""))
+
+	DataManager.truths.assign(data.get("truths", []))
+	DataManager.dares.assign(data.get("dares", []))
+
+	_used_truth_ids.clear()
+	for i in data.get("used_truth_indices", []):
+		_used_truth_ids[int(i)] = true
+	_used_dare_ids.clear()
+	for i in data.get("used_dare_indices", []):
+		_used_dare_ids[int(i)] = true
+
+	_last_type_by_player = data.get("last_type_by_player", {})
+	_same_type_streak = data.get("same_type_streak", {})
+	_pending_escalation = data.get("pending_escalation", {})
+	_last_rolled_weights = data.get("last_rolled_weights", {})
+	_last_rolled_bonus = float(data.get("last_rolled_bonus", 0.0))
+	_player_stats = data.get("player_stats", {})
+
+	state_changed.emit()
+
+
+# Called after each state change. Writes the snapshot — or clears it if
+# the game just ended, so Home doesn't offer to Continue a dead match.
+func _save_session() -> void:
+	if game_over:
+		SessionState.clear()
+	else:
+		SessionState.save(to_snapshot())
+
+
 func start_game(player_names: Array[String]) -> void:
 	players = player_names.duplicate()
 	current_index = 0
@@ -70,6 +144,7 @@ func start_game(player_names: Array[String]) -> void:
 		_player_stats[p] = {"truths": 0, "dares": 0}
 	_roll_prompt()
 	state_changed.emit()
+	_save_session()
 
 
 func restart() -> void:
@@ -95,12 +170,14 @@ func advance() -> void:
 		current_text = ""
 		current_long_text = ""
 		state_changed.emit()
+		_save_session()
 		return
 	current_index += 1
 	if current_index >= players.size():
 		current_index = 0
 	_roll_prompt()
 	state_changed.emit()
+	_save_session()
 
 
 func stats_for(player_name: String) -> Dictionary:

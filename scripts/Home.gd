@@ -19,17 +19,19 @@ func _build() -> void:
 	_header.settings_pressed.connect(_on_settings_pressed)
 	add_child(_header)
 
-	var has_active_game := GameState.players.size() >= 2 and not GameState.game_over
+	# Continue availability is read from SessionState, not GameState —
+	# GameState is empty on a cold app launch even if a session is on disk.
+	var has_session := SessionState.has_session()
 	var footer_buttons: Array = []
 
-##  Commented out the "continue" button for now, since it was causing an lot of potential edge case scenarios. We can re-add it later if we want to support continuing a game from the home screen.
-## 	if has_active_game:
-## 		footer_buttons.append({
-## 			"id": "continue",
-## 			"text": "CONTINUE GAME",
-## 			"color": Design.EIGHT,
-## 			"icon": Design.ICON_CONTINUE,
-## 		})
+	if has_session:
+		footer_buttons.append({
+			"id": "continue",
+			"text": "CONTINUE GAME",
+			"color": Design.EIGHT,
+			"icon": Design.ICON_CONTINUE,
+			"hint": "Starting a new game will erase this session.",
+		})
 
 	footer_buttons.append({
 		"id": "preview",
@@ -39,7 +41,7 @@ func _build() -> void:
 	})
 	footer_buttons.append({
 		"id": "start",
-		"text": "NEW GAME" if has_active_game else "START GAME",
+		"text": "NEW GAME" if has_session else "START GAME",
 		"color": Design.SECONDARY,
 	})
 	_footer = AppFooter.create(footer_buttons)

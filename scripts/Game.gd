@@ -14,7 +14,12 @@ var _settings_modal: Modal
 
 
 func _ready() -> void:
-	if GameState.players.is_empty():
+	# Prefer a persisted session over the fresh-from-setup path — this is
+	# what "CONTINUE GAME" lands on. If there's no session and no players
+	# in memory either, we've been opened cold without going through setup.
+	if SessionState.has_session():
+		GameState.from_snapshot(SessionState.load_data())
+	elif GameState.players.is_empty():
 		Navigation.go_to(Navigation.PLAYER_SETUP)
 		return
 	_build()

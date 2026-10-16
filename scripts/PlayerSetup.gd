@@ -364,6 +364,9 @@ func _on_footer_button(id: String) -> void:
 				AudioManager.play_error()
 				ToastManager.show_message("Need at least 2 players", 2.0, true)
 				return
+			# Starting a new match wipes any resumable session. This is
+			# the only thing that discards a session without a game over.
+			SessionState.clear()
 			GameState.start_game(_players)
 			Navigation.go_to(Navigation.GAME)
 
