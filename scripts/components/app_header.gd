@@ -18,7 +18,12 @@ func _build() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 
 	var panel := Panel.new()
-	panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	# STOP so the header absorbs clicks across its full rect. Without this,
+	# content bleeding up from a scroll below sits behind the header
+	# visually but still receives clicks, blocking the settings/logo inputs.
+	# Marked preserve_mouse_filter so UiUtils.make_scroll_friendly skips it.
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.set_meta("preserve_mouse_filter", true)
 	panel.custom_minimum_size = Vector2(0, Design.HEADER_HEIGHT)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Design.BLACK

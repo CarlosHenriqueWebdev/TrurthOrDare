@@ -11,6 +11,7 @@ var _complete_btn: StyledButton
 var _penalty_dialog: PenaltyDialog
 var _message_modal: MessageModal
 var _settings_modal: Modal
+var _prompt_scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -29,29 +30,25 @@ func _ready() -> void:
 func _build() -> void:
 	_build_background()
 
-	var root := VBoxContainer.new()
+	# Layout root is a plain Control. Header and footer are added later
+	# (as siblings) so Godot's reverse-order GUI picker checks them
+	# before the scroll content that bleeds behind them.
+	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 0)
 	add_child(root)
 
-	var header := AppHeader.create()
-	header.settings_pressed.connect(_on_settings_pressed)
-	header.logo_pressed.connect(_on_back_to_menu)
-	header.z_index = 5
-	root.add_child(header)
-
-	root.add_child(_spacer(16))
-
-	# Scroll fills the whole middle area; clip is disabled so a card
-	# taller than the visible slot bleeds up behind the player box and
-	# down behind the footer. Content is padded at the top internally so
-	# the first card starts below the player box overlay.
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.clip_contents = false
-	root.add_child(scroll)
+	# Scroll fills the middle area; clip is disabled so a card taller
+	# than the visible slot bleeds up behind the player box and down
+	# behind the footer. Content is padded internally so the first card
+	# starts below the player box overlay.
+	_prompt_scroll = ScrollContainer.new()
+	_prompt_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_prompt_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_prompt_scroll.offset_top    = int(Design.HEADER_HEIGHT) + 16
+	_prompt_scroll.offset_bottom = -(int(Design.FOOTER_HEIGHT) + 16)
+	_prompt_scroll.clip_contents = false
+	root.add_child(_prompt_scroll)
+	var scroll := _prompt_scroll
 
 	var content_margin := MarginContainer.new()
 	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -75,8 +72,22 @@ func _build() -> void:
 	_prompt_area.alignment = BoxContainer.ALIGNMENT_CENTER
 	_content_col.add_child(_prompt_area)
 
+	# Bottom spacer so the card sits 16px above the footer when the scroll
+	# is scrolled to the max. Without it the card bottom is flush.
+	_content_col.add_child(_spacer(16))
+
 	_build_footer(root)
-	_footer.z_index = 5
+
+	# Header and footer added after the scroll so Godot's picker finds
+	# them first. Both anchored, so they don't need VBox positioning.
+	var header := AppHeader.create()
+	header.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	header.settings_pressed.connect(_on_settings_pressed)
+	header.logo_pressed.connect(_on_back_to_menu)
+	root.add_child(header)
+	_footer.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_footer.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	root.add_child(_footer)
 
 	# Player box overlay — drawn on top of the scroll, does not scroll.
 	_current_player_box = CurrentPlayerBox.make("", "sober", 1, 1)
@@ -114,7 +125,7 @@ func _build_background() -> void:
 		add_child(c)
 
 
-func _build_footer(root: VBoxContainer) -> void:
+func _build_footer(_root: Control) -> void:
 	_footer = VBoxContainer.new()
 	_footer.add_theme_constant_override("separation", 0)
 
@@ -158,8 +169,8 @@ func _build_footer(root: VBoxContainer) -> void:
 	_complete_btn = StyledButton.create("COMPLETE", Design.SECONDARY)
 	_complete_btn.pressed.connect(_on_complete)
 	col.add_child(_complete_btn)
-
-	root.add_child(_footer)
+	# Footer is added to the screen's root by _build, not here — see the
+	# comment about Godot's reverse-order picker there.
 
 
 # =====================================================================
@@ -201,9 +212,10 @@ func _refresh() -> void:
 	# Info line
 	_update_info()
 
-	# Re-walk the tree so the freshly built prompt card doesn't eat
+	# Re-walk the scroll content so freshly built prompt cards don't eat
 	# drags meant for the ScrollContainer underneath on touch.
-	UiUtils.make_scroll_friendly(self)
+	if _prompt_scroll:
+		UiUtils.make_scroll_content_friendly(_prompt_scroll)
 
 
 func _update_info() -> void:

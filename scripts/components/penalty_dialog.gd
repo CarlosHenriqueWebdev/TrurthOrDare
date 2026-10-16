@@ -91,7 +91,7 @@ func _build() -> void:
 
 	_modal.set_content(col)
 	_fit_scroll.call_deferred()
-	UiUtils.make_scroll_friendly(self)
+	UiUtils.make_scroll_content_friendly(_scroll)
 
 	# Open the first group by default and never let it close.
 	# Auto-select its first sub-option.
@@ -105,8 +105,9 @@ func open() -> void:
 	if not _sections.is_empty():
 		_select_default()
 	_fit_scroll.call_deferred()
-	# Re-walk the tree after opening in case anything was rebuilt.
-	UiUtils.make_scroll_friendly.call_deferred(self)
+	# Re-walk the scroll content in case anything was rebuilt.
+	if _scroll:
+		UiUtils.make_scroll_content_friendly.call_deferred(_scroll)
 	_modal.open()
 
 

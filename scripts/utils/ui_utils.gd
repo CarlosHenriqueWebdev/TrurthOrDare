@@ -49,26 +49,31 @@ static func make_clickable(node: Control, on_click: Callable, play_sound := true
 #
 # ScrollContainers are skipped so we never accidentally disable their
 # own drag handling. Call this once, after the UI is fully built.
-static func make_scroll_friendly(root: Node) -> void:
+# Deprecated — kept so any lingering callers compile without error.
+# Does nothing. New code should use make_scroll_content_friendly(scroll).
+static func make_scroll_friendly(_root: Node, _from: Node = null) -> void:
+	pass
+
+
+# Scoped variant — walks only the content of the given ScrollContainer.
+# Preferred over the whole-tree walker: reclassifying nodes outside a
+# scroll (headers, footers, modals) is what silently broke their click
+# handlers in earlier revisions. This version can only touch content
+# that lives inside the scroll, where downgrading is safe and intended.
+static func make_scroll_content_friendly(scroll: ScrollContainer) -> void:
+	_walk_scroll_content(scroll)
+
+
+static func _walk_scroll_content(root: Node) -> void:
 	for child in root.get_children():
 		if child is ScrollContainer:
-			make_scroll_friendly(child)
+			_walk_scroll_content(child)
 			continue
-		# Skip anything with a gui_input handler — the node is deliberately
-		# interactive and downgrading its filter would break that handler
-		# (e.g. Modal's dimmer ColorRect, which listens for outside clicks).
 		if not child.get_signal_connection_list("gui_input").is_empty():
-			make_scroll_friendly(child)
+			_walk_scroll_content(child)
 			continue
 		if child is Control:
 			var c := child as Control
-			# Never upgrade away from IGNORE. Nodes explicitly set to
-			# IGNORE (like Modal's full-rect overlay `outer`, which lets
-			# clicks fall through to the dimmer beneath it) must stay
-			# that way or they'll start consuming events meant for other
-			# controls. Godot's PASS propagates to the parent, not to
-			# lower-z siblings, so bumping IGNORE to PASS silently breaks
-			# the click chain.
 			if c.mouse_filter != Control.MOUSE_FILTER_IGNORE:
 				if child is Label or child is RichTextLabel \
 						or child is TextureRect or child is ColorRect \
@@ -76,7 +81,7 @@ static func make_scroll_friendly(root: Node) -> void:
 					c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				elif child is Container or child is Button:
 					c.mouse_filter = Control.MOUSE_FILTER_PASS
-		make_scroll_friendly(child)
+		_walk_scroll_content(child)
 
 # Scroll "bleed" — when enabled, the ScrollContainer's content is not
 # clipped at its rect, so it visually flows past the top and bottom

@@ -29,7 +29,10 @@ func _build(buttons: Array) -> void:
 
 	# PanelContainer sizes to its content — no fixed height, no clipping.
 	var content := PanelContainer.new()
-	content.mouse_filter = Control.MOUSE_FILTER_PASS
+	# STOP for the same reason as app_header.gd's panel. Marked
+	# preserve_mouse_filter so the walker leaves it alone.
+	content.mouse_filter = Control.MOUSE_FILTER_STOP
+	content.set_meta("preserve_mouse_filter", true)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Design.BLACK
 	sb.content_margin_left   = Design.SIDE_PADDING

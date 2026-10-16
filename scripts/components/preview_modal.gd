@@ -14,6 +14,7 @@ const SCROLL_MAX_HEIGHT := 600
 var _modal: Modal
 var _cards_col: VBoxContainer
 var _count_label: Label
+var _scroll: ScrollContainer
 
 
 static func create() -> PreviewModal:
@@ -44,11 +45,12 @@ func _build() -> void:
 
 	# Scrollable card list — the container itself stays, only children
 	# are rebuilt in _populate().
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, SCROLL_MAX_HEIGHT)
-	col.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.custom_minimum_size = Vector2(0, SCROLL_MAX_HEIGHT)
+	col.add_child(_scroll)
+	var scroll := _scroll
 
 	_cards_col = VBoxContainer.new()
 	_cards_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -56,7 +58,7 @@ func _build() -> void:
 	scroll.add_child(_cards_col)
 
 	_modal.set_content(col)
-	UiUtils.make_scroll_friendly(self)
+	UiUtils.make_scroll_content_friendly(_scroll)
 
 
 # Rebuild the card list from whatever DataManager currently holds.
@@ -86,9 +88,9 @@ func _populate() -> void:
 
 func open() -> void:
 	_populate()
-	# _populate rebuilds the card list; walk the tree again so the fresh
-	# PreviewCards don't block the scroll drag on mobile.
-	UiUtils.make_scroll_friendly(self)
+	# _populate rebuilds the card list; walk the scroll again so the
+	# fresh PreviewCards don't block the scroll drag on mobile.
+	UiUtils.make_scroll_content_friendly(_scroll)
 	_modal.open()
 
 

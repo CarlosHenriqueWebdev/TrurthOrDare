@@ -36,13 +36,14 @@ var _limited_input_row: VBoxContainer
 var _mode_hint: Label
 var _max_turns_input: LineEdit
 var _max_rounds_invalid := false
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
 	_players = SaveManager.get_players()
 	_build()
 	UiUtils.connect_click_sounds(self)
-	UiUtils.make_scroll_friendly(self)
+	UiUtils.make_scroll_content_friendly(_scroll)
 	_refresh()
 
 
@@ -57,22 +58,22 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build() -> void:
 	_build_background()
 
-	var root := VBoxContainer.new()
+	# Layout root is a plain Control. Children are positioned by anchors
+	# so the header and footer can be added later in the tree than the
+	# scroll — Godot's GUI picker walks children in reverse order and
+	# does not respect z_index, so a bleed scroll's content would steal
+	# clicks meant for the header if the header were added first.
+	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_theme_constant_override("separation", 0)
 	add_child(root)
 
-	var header := AppHeader.create()
-	header.settings_pressed.connect(_on_settings_pressed)
-	header.logo_pressed.connect(_on_back_to_menu)
-	root.add_child(header)
-
-	root.add_child(_spacer(SECTION_GAP))
-
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_scroll.offset_top    = int(Design.HEADER_HEIGHT) + SECTION_GAP
+	_scroll.offset_bottom = -(int(Design.FOOTER_HEIGHT) + SECTION_GAP)
+	root.add_child(_scroll)
+	var scroll := _scroll
 
 	var content_margin := MarginContainer.new()
 	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -91,15 +92,23 @@ func _build() -> void:
 	content_col.add_child(_build_player_list_box())
 	content_col.add_child(_build_config_box())
 	# No trailing spacer — the SECTION_GAP below the scroll (16px) is
-	# the desired visual gap at max scroll. A trailing spacer here would
-	# stack on top of it and produce a 40px gap when bleed is enabled.
+	# the desired visual gap at max scroll.
 
-	root.add_child(_spacer(SECTION_GAP))
+	# Header and footer are added AFTER the scroll as siblings. In
+	# Godot's reverse-order picker they're therefore checked before the
+	# scroll's content, so bleed content behind them cannot steal clicks.
+	var header := AppHeader.create()
+	header.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	header.settings_pressed.connect(_on_settings_pressed)
+	header.logo_pressed.connect(_on_back_to_menu)
+	root.add_child(header)
 
 	var footer := AppFooter.create([
 		{"id": "randomize", "text": "RANDOMIZE PLAYER ORDER", "color": Design.PRIMARY, "icon": Design.ICON_DICE},
 		{"id": "start",     "text": "START GAME",             "color": Design.SECONDARY},
 	])
+	footer.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	footer.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	footer.button_pressed.connect(_on_footer_button)
 	root.add_child(footer)
 
@@ -253,7 +262,8 @@ func _refresh() -> void:
 	# Re-run the scroll walker: _rebuild_player_rows just created fresh
 	# PlayerRow nodes, which default to MOUSE_FILTER_STOP and would
 	# otherwise eat drags aimed at the ScrollContainer.
-	UiUtils.make_scroll_friendly(self)
+	if _scroll:
+		UiUtils.make_scroll_content_friendly(_scroll)
 
 
 func _rebuild_player_rows() -> void:
