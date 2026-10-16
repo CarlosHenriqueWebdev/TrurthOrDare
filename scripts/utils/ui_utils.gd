@@ -52,16 +52,40 @@ static func make_clickable(node: Control, on_click: Callable, play_sound := true
 static func make_scroll_friendly(root: Node) -> void:
 	for child in root.get_children():
 		if child is ScrollContainer:
-			# Leave the ScrollContainer's own filter alone (it needs
-			# STOP to receive drag events) but DO descend into its
-			# content — otherwise the boxes and labels inside stay
-			# STOP and eat the drag before it reaches the scroll.
 			make_scroll_friendly(child)
 			continue
-		if child is Label or child is RichTextLabel \
-				or child is TextureRect or child is ColorRect \
-				or (child is Panel and not (child is PanelContainer)):
-			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		elif child is Container:
-			child.mouse_filter = Control.MOUSE_FILTER_PASS
+		# Skip anything with a gui_input handler — the node is deliberately
+		# interactive and downgrading its filter would break that handler
+		# (e.g. Modal's dimmer ColorRect, which listens for outside clicks).
+		if not child.get_signal_connection_list("gui_input").is_empty():
+			make_scroll_friendly(child)
+			continue
+		if child is Control:
+			var c := child as Control
+			# Never upgrade away from IGNORE. Nodes explicitly set to
+			# IGNORE (like Modal's full-rect overlay `outer`, which lets
+			# clicks fall through to the dimmer beneath it) must stay
+			# that way or they'll start consuming events meant for other
+			# controls. Godot's PASS propagates to the parent, not to
+			# lower-z siblings, so bumping IGNORE to PASS silently breaks
+			# the click chain.
+			if c.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+				if child is Label or child is RichTextLabel \
+						or child is TextureRect or child is ColorRect \
+						or (child is Panel and not (child is PanelContainer)):
+					c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				elif child is Container or child is Button:
+					c.mouse_filter = Control.MOUSE_FILTER_PASS
 		make_scroll_friendly(child)
+
+# Scroll "bleed" — when enabled, the ScrollContainer's content is not
+# clipped at its rect, so it visually flows past the top and bottom
+# edges into surrounding chrome (header, footer, spacers). The overlay
+# controls are given a higher z_index so they still draw on top of the
+# bleeding content. Call this after the scroll and overlays are added.
+static func enable_scroll_bleed(scroll: ScrollContainer, top_overlay: Control = null, bottom_overlay: Control = null) -> void:
+	scroll.clip_contents = false
+	if top_overlay:
+		top_overlay.z_index = 1
+	if bottom_overlay:
+		bottom_overlay.z_index = 1

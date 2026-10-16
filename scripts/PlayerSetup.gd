@@ -5,6 +5,14 @@ const NAME_MAX_LENGTH := 16
 const CONTENT_SIDE_PAD := 16
 const SECTION_GAP := 16
 
+# Experimental: when true, the setup scroll's content is drawn without
+# clipping at the scroll rect, letting it spill into the spacer rows
+# above and below. Header and footer get bumped to a higher z_index so
+# they still draw on top. Flip to false to revert to clipped scrolling.
+# This flag only affects PlayerSetup for now — after evaluating the look,
+# it may be promoted to a Design token and applied to other screens.
+const BLEED_SCROLL := true
+
 var _players: Array[String] = []
 
 var _name_input: LineEdit
@@ -27,6 +35,7 @@ var _alt_mode_container: VBoxContainer
 var _limited_input_row: VBoxContainer
 var _mode_hint: Label
 var _max_turns_input: LineEdit
+var _max_rounds_invalid := false
 
 
 func _ready() -> void:
@@ -81,7 +90,9 @@ func _build() -> void:
 	content_col.add_child(_build_add_player_box())
 	content_col.add_child(_build_player_list_box())
 	content_col.add_child(_build_config_box())
-	content_col.add_child(_spacer(24))
+	# No trailing spacer — the SECTION_GAP below the scroll (16px) is
+	# the desired visual gap at max scroll. A trailing spacer here would
+	# stack on top of it and produce a 40px gap when bleed is enabled.
 
 	root.add_child(_spacer(SECTION_GAP))
 
@@ -96,6 +107,9 @@ func _build() -> void:
 	_start_btn     = footer.get_button("start")
 	if _randomize_btn:
 		_randomize_btn.suppress_click_sound = true
+
+	if BLEED_SCROLL:
+		UiUtils.enable_scroll_bleed(scroll, header, footer)
 
 	_settings_modal = Modal.create()
 	var settings_panel := SettingsPanel.create(true)
@@ -369,8 +383,15 @@ func _on_footer_button(id: String) -> void:
 				AudioManager.play_error()
 				ToastManager.show_message("Need at least 2 players", 2.0, true)
 				return
-			# Starting a new match wipes any resumable session. This is
-			# the only thing that discards a session without a game over.
+			# Always re-validate the Match Max Rounds field in limited mode.
+			# Relying on _max_rounds_invalid alone is unreliable: buttons
+			# have focus_mode = FOCUS_NONE, so clicking START doesn't blur
+			# the LineEdit and _on_max_turns_blur never fires. The field
+			# could hold invalid text while the flag reads false.
+			if SaveManager.get_game_mode() == "limited":
+				if not _validate_max_rounds(true):
+					return
+			# Starting a new match wipes any resumable session.
 			SessionState.clear()
 			GameState.start_game(_players)
 			Navigation.go_to(Navigation.GAME)
@@ -544,6 +565,7 @@ func _build_config_box() -> BorderedBox:
 	_style_line_edit_bare(_max_turns_input)
 	_max_turns_input.text_submitted.connect(_on_max_turns_submitted)
 	_max_turns_input.focus_exited.connect(_on_max_turns_blur)
+	_max_turns_input.text_changed.connect(_on_max_turns_changed)
 	limit_row.add_child(_max_turns_input)
 
 	# Quick-pick presets — same trick as the CSV CLEAR/UPLOAD row, just
@@ -617,36 +639,45 @@ func _refresh_mode_hint() -> void:
 			_mode_hint.text = "Default: Play all cards until match is over"
 
 
-func _on_max_turns_submitted(text: String) -> void:
-	_commit_max_turns(text)
+func _on_max_turns_submitted(_text: String) -> void:
+	_validate_max_rounds(true)
 	_max_turns_input.release_focus()
 
 
 func _on_max_turns_blur() -> void:
-	_commit_max_turns(_max_turns_input.text)
+	# Silent on blur — user may still be editing. START will catch a
+	# leftover invalid value and block the transition there.
+	_validate_max_rounds(false)
 
 
-func _commit_max_turns(text: String) -> void:
-	var raw := text.strip_edges()
-	# Validate on submit rather than filtering on every keystroke.
-	# LineEdit's internal state doesn't survive a mid-signal rewrite
-	# cleanly (crashes reported with certain inputs like "~~"), so we
-	# let the field hold whatever and only push back if it's invalid.
-	if not raw.is_valid_int() or raw.to_int() <= 0:
+func _on_max_turns_changed(_s: String) -> void:
+	# Typing anything invalidates the previous error state so the player
+	# can recover by editing the field.
+	_max_rounds_invalid = false
+
+
+# Validates the field. If valid, saves the value and clears the flag.
+# If invalid, sets the flag; shows toast + punch when `feedback` is true.
+func _validate_max_rounds(feedback: bool) -> bool:
+	var raw := _max_turns_input.text.strip_edges()
+	if raw.is_valid_int() and raw.to_int() > 0:
+		_max_rounds_invalid = false
+		var n := raw.to_int()
+		SaveManager.set_match_max_rounds(n)
+		_max_turns_input.text = str(n)
+		return true
+	_max_rounds_invalid = true
+	if feedback:
 		AudioManager.play_error()
 		ToastManager.show_message("Enter a whole number (1+)", 2.0, true)
-		_max_turns_input.text = str(SaveManager.get_match_max_rounds())
 		_punch(_max_turns_input)
-		return
-	var n := raw.to_int()
-	SaveManager.set_match_max_rounds(n)
-	_max_turns_input.text = str(n)
-	AudioManager.play_success()
+	return false
 
 
 func _on_preset_rounds(value: int) -> void:
 	SaveManager.set_match_max_rounds(value)
 	_max_turns_input.text = str(value)
+	_max_rounds_invalid = false
 	AudioManager.play_success()
 
 

@@ -37,42 +37,50 @@ func _build() -> void:
 	var header := AppHeader.create()
 	header.settings_pressed.connect(_on_settings_pressed)
 	header.logo_pressed.connect(_on_back_to_menu)
+	header.z_index = 5
 	root.add_child(header)
 
 	root.add_child(_spacer(16))
 
-	var content_margin := MarginContainer.new()
-	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content_margin.add_theme_constant_override("margin_left",  16)
-	content_margin.add_theme_constant_override("margin_right", 16)
-	content_margin.add_theme_constant_override("margin_bottom", 16)
-	root.add_child(content_margin)
-
-	_content_col = VBoxContainer.new()
-	_content_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_content_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_content_col.add_theme_constant_override("separation", 16)
-	content_margin.add_child(_content_col)
-
-	_current_player_box = CurrentPlayerBox.make("", "sober", 1, 1)
-	_content_col.add_child(_current_player_box)
-
+	# Scroll fills the whole middle area; clip is disabled so a card
+	# taller than the visible slot bleeds up behind the player box and
+	# down behind the footer. Content is padded at the top internally so
+	# the first card starts below the player box overlay.
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_content_col.add_child(scroll)
+	scroll.clip_contents = false
+	root.add_child(scroll)
 
-	var inner := VBoxContainer.new()
-	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inner.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	inner.alignment = BoxContainer.ALIGNMENT_CENTER
-	scroll.add_child(inner)
+	var content_margin := MarginContainer.new()
+	content_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_margin.add_theme_constant_override("margin_left",  16)
+	content_margin.add_theme_constant_override("margin_right", 16)
+	scroll.add_child(content_margin)
 
-	_prompt_area = inner
+	_content_col = VBoxContainer.new()
+	_content_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content_col.add_theme_constant_override("separation", 0)
+	content_margin.add_child(_content_col)
+
+	# Room at the top of the scroll for the player box overlay (drawn
+	# separately, on top of the scroll).
+	_content_col.add_child(_spacer(CurrentPlayerBox.HEIGHT + 16))
+
+	# Prompt area — fills remaining height and centers its content.
+	_prompt_area = VBoxContainer.new()
+	_prompt_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_prompt_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_prompt_area.alignment = BoxContainer.ALIGNMENT_CENTER
+	_content_col.add_child(_prompt_area)
 
 	_build_footer(root)
+	_footer.z_index = 5
+
+	# Player box overlay — drawn on top of the scroll, does not scroll.
+	_current_player_box = CurrentPlayerBox.make("", "sober", 1, 1)
+	_place_player_box_overlay(_current_player_box)
 
 	_settings_modal = Modal.create()
 	var settings_panel := SettingsPanel.create(true)
@@ -158,15 +166,13 @@ func _build_footer(root: VBoxContainer) -> void:
 # STATE
 # =====================================================================
 func _refresh() -> void:
-	# Rebuild player box
+	# Rebuild player box as an overlay (drawn above the scroll)
 	if is_instance_valid(_current_player_box):
-		_content_col.remove_child(_current_player_box)
 		_current_player_box.queue_free()
 	var idx := GameState.current_index + 1
 	var total := GameState.players.size()
 	_current_player_box = CurrentPlayerBox.make(GameState.current_player(), GameState.current_category, idx, total)
-	_content_col.add_child(_current_player_box)
-	_content_col.move_child(_current_player_box, 0)
+	_place_player_box_overlay(_current_player_box)
 
 	# Prompt area
 	for child in _prompt_area.get_children():
@@ -194,6 +200,10 @@ func _refresh() -> void:
 
 	# Info line
 	_update_info()
+
+	# Re-walk the tree so the freshly built prompt card doesn't eat
+	# drags meant for the ScrollContainer underneath on touch.
+	UiUtils.make_scroll_friendly(self)
 
 
 func _update_info() -> void:
@@ -383,3 +393,15 @@ func _spacer(h: int) -> Control:
 	s.custom_minimum_size = Vector2(0, h)
 	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return s
+
+
+# Place the player box as a fixed overlay below the header, drawn on top
+# of the scroll so the card can bleed behind it without covering it.
+func _place_player_box_overlay(box: Control) -> void:
+	box.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	box.offset_left   = 16
+	box.offset_right  = -16
+	box.offset_top    = Design.HEADER_HEIGHT + 16
+	box.offset_bottom = Design.HEADER_HEIGHT + 16 + CurrentPlayerBox.HEIGHT
+	box.z_index = 5
+	add_child(box)
