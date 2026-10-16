@@ -5,6 +5,7 @@ const MODE_PENALTY := "penalty"
 
 var _mode := MODE_CARD
 var _locked := false
+var _bare := false
 
 var _card_tab: ToggleButton
 var _penalty_tab: ToggleButton
@@ -23,10 +24,18 @@ static func create(locked := false) -> CsvUploadSection:
 	return s
 
 
+# Bare variant — no outer BorderedBox. Use when embedding inside another
+# bordered container (e.g. PlayerSetup's configuration block).
+static func create_bare(locked := false) -> CsvUploadSection:
+	var s := CsvUploadSection.new()
+	s._locked = locked
+	s._bare = true
+	s._build()
+	return s
+
+
 func _build() -> void:
 	add_theme_constant_override("separation", 0)
-
-	var box := BorderedBox.create(12)
 
 	var inner := VBoxContainer.new()
 	inner.add_theme_constant_override("separation", 0)
@@ -106,8 +115,12 @@ func _build() -> void:
 	_view_btn.pressed.connect(_show_format)
 	inner.add_child(_view_btn)
 
-	box.add_with_margins(inner, 16, 16, 16, 16)
-	add_child(box)
+	if _bare:
+		add_child(inner)
+	else:
+		var box := BorderedBox.create(12)
+		box.add_with_margins(inner, 16, 16, 16, 16)
+		add_child(box)
 
 	# File dialog
 	_file_dialog = FileDialog.new()

@@ -212,6 +212,10 @@ func is_endless() -> bool:
 func is_game_complete() -> bool:
 	if is_endless():
 		return false
+	# Limited mode: ends when Match Max Amount (in turns) is reached.
+	if SaveManager.get_game_mode() == "limited":
+		if cards_played >= SaveManager.get_match_max_turns():
+			return true
 	var t_total := DataManager.truths.size()
 	var d_total := DataManager.dares.size()
 	if t_total + d_total == 0:
@@ -222,8 +226,14 @@ func is_game_complete() -> bool:
 func cards_remaining() -> int:
 	if is_endless():
 		return -1  # -1 signals "unlimited" to the UI
-	return (DataManager.truths.size() - _used_truth_ids.size()) \
+	var deck_left := (DataManager.truths.size() - _used_truth_ids.size()) \
 		+ (DataManager.dares.size() - _used_dare_ids.size())
+	if SaveManager.get_game_mode() == "limited":
+		# maxi() is the int-typed sibling of max() — the generic max()
+		# returns Variant and would fail the project's warnings-as-errors.
+		var cap_left: int = maxi(SaveManager.get_match_max_turns() - cards_played, 0)
+		return mini(deck_left, cap_left)
+	return deck_left
 
 
 func _effective_round() -> int:

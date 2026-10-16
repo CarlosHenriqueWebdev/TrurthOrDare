@@ -18,6 +18,15 @@ var _add_error := false
 var _hint_label: Label
 var _player_count_label: Label
 
+# Configuration / Settings block
+var _streak_toggle: ToggleGroup
+var _mode_toggle: ToggleGroup
+var _alt_mode_toggle: ToggleGroup
+var _alt_mode_container: VBoxContainer
+var _limited_input_row: VBoxContainer
+var _mode_hint: Label
+var _max_turns_input: LineEdit
+
 
 func _ready() -> void:
 	_players = SaveManager.get_players()
@@ -69,6 +78,7 @@ func _build() -> void:
 
 	content_col.add_child(_build_add_player_box())
 	content_col.add_child(_build_player_list_box())
+	content_col.add_child(_build_config_box())
 	content_col.add_child(_spacer(24))
 
 	root.add_child(_spacer(SECTION_GAP))
@@ -431,6 +441,171 @@ func _starts_with_letter(player_name: String) -> bool:
 		return false
 	var c := player_name.substr(0, 1).to_upper()
 	return c >= "A" and c <= "Z"
+
+
+# =====================================================================
+# CONFIGURATION / SETTINGS
+# =====================================================================
+func _build_config_box() -> BorderedBox:
+	var box := BorderedBox.create()
+
+	# --- Title ---
+	var title_row := HBoxContainer.new()
+	var title := Label.new()
+	title.text = "CONFIGURATION / SETTINGS"
+	Design.apply_label(title, 12)
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_row.add_child(title)
+	box.add_with_margins(title_row, 16, 16, 16, 0)
+
+	box.add_spacer(16)
+	box.add_full(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))
+	box.add_spacer(16)
+
+	# --- Section: Streak Balance ---
+	var streak_label := Label.new()
+	streak_label.text = "Streak Balance (avoid Truth/Dare streaks)"
+	Design.apply_label(streak_label, Design.FONT_SIZE_LABEL, Design.GRAY)
+	box.add_with_margins(streak_label, 16, 0, 16, 0)
+	box.add_spacer(12)
+	_streak_toggle = ToggleGroup.create(SaveManager.get_streak_balance())
+	_streak_toggle.changed.connect(func(is_on): SaveManager.set_streak_balance(is_on))
+	box.add_with_margins(_streak_toggle, 16, 0, 16, 16)
+
+	box.add_full(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))
+	box.add_spacer(16)
+
+	# --- Section: Game Mode ---
+	var mode_label := Label.new()
+	mode_label.text = "Select Game Mode"
+	Design.apply_label(mode_label, Design.FONT_SIZE_LABEL, Design.GRAY)
+	box.add_with_margins(mode_label, 16, 0, 16, 0)
+	box.add_spacer(12)
+
+	var other_selected := SaveManager.get_game_mode() != "default"
+	_mode_toggle = ToggleGroup.create_labeled("DEFAULT", "OTHER", other_selected)
+	_mode_toggle.changed.connect(_on_game_mode_toggled)
+	box.add_with_margins(_mode_toggle, 16, 0, 16, 12)
+
+	# Alternative-mode sub-block (hidden unless "Other" is active)
+	_alt_mode_container = VBoxContainer.new()
+	_alt_mode_container.add_theme_constant_override("separation", 0)
+	_alt_mode_container.visible = other_selected
+
+	var alt_label := Label.new()
+	alt_label.text = "Alternative Mode Selection"
+	Design.apply_label(alt_label, Design.FONT_SIZE_LABEL, Design.GRAY)
+	_alt_mode_container.add_child(alt_label)
+	_alt_mode_container.add_child(_spacer(12))
+
+	var endless_selected := SaveManager.get_game_mode() == "endless"
+	_alt_mode_toggle = ToggleGroup.create_labeled("LIMITED", "ENDLESS", endless_selected)
+	_alt_mode_toggle.changed.connect(_on_alt_mode_toggled)
+	_alt_mode_container.add_child(_alt_mode_toggle)
+	_alt_mode_container.add_child(_spacer(12))
+
+	# Max-turns input (only visible when Limited is active)
+	_limited_input_row = VBoxContainer.new()
+	_limited_input_row.add_theme_constant_override("separation", 8)
+	_limited_input_row.visible = SaveManager.get_game_mode() == "limited"
+
+	var limit_label := Label.new()
+	limit_label.text = "Match Max Amount..."
+	Design.apply_label(limit_label, 10, Design.GRAY)
+	_limited_input_row.add_child(limit_label)
+
+	_max_turns_input = LineEdit.new()
+	_max_turns_input.text = str(SaveManager.get_match_max_turns())
+	_max_turns_input.max_length = 4
+	_max_turns_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_max_turns_input.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_max_turns_input.virtual_keyboard_enabled = true
+	_max_turns_input.focus_mode = Control.FOCUS_ALL
+	_max_turns_input.mouse_filter = Control.MOUSE_FILTER_STOP
+	_style_line_edit_bare(_max_turns_input)
+	_max_turns_input.text_submitted.connect(_on_max_turns_submitted)
+	_max_turns_input.focus_exited.connect(_on_max_turns_blur)
+	_limited_input_row.add_child(_max_turns_input)
+
+	var underline := ColorRect.new()
+	underline.color = Design.GRAY
+	underline.custom_minimum_size = Vector2(0, 2)
+	underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_limited_input_row.add_child(underline)
+
+	_alt_mode_container.add_child(_limited_input_row)
+	box.add_with_margins(_alt_mode_container, 16, 0, 16, 0)
+
+	# Mode hint — green caption, one line
+	_mode_hint = Label.new()
+	_mode_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_mode_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	Design.apply_label(_mode_hint, 14, Design.EIGHT.lightened(0.45))
+	box.add_with_margins(_mode_hint, 16, 12, 16, 16)
+
+	box.add_full(ThreeLineDivider.create(Design.INNER_BORDER, Design.BLACK, Design.INNER_BORDER))
+	box.add_spacer(16)
+
+	# --- Section: CSV Upload (bare, no inner border) ---
+	box.add_with_margins(CsvUploadSection.create_bare(), 16, 0, 16, 16)
+
+	_refresh_mode_hint()
+	return box
+
+
+func _on_game_mode_toggled(other_selected: bool) -> void:
+	if other_selected:
+		# First time switching to Other → default to Limited.
+		if SaveManager.get_game_mode() == "default":
+			SaveManager.set_game_mode("limited")
+		_alt_mode_container.visible = true
+	else:
+		SaveManager.set_game_mode("default")
+		_alt_mode_container.visible = false
+	_refresh_alt_visibility()
+	_refresh_mode_hint()
+
+
+func _on_alt_mode_toggled(endless_selected: bool) -> void:
+	SaveManager.set_game_mode("endless" if endless_selected else "limited")
+	_refresh_alt_visibility()
+	_refresh_mode_hint()
+
+
+func _refresh_alt_visibility() -> void:
+	if not _limited_input_row:
+		return
+	_limited_input_row.visible = SaveManager.get_game_mode() == "limited"
+
+
+func _refresh_mode_hint() -> void:
+	if not _mode_hint:
+		return
+	match SaveManager.get_game_mode():
+		"limited":
+			_mode_hint.text = "Limited: Play until certain amount of turns"
+		"endless":
+			_mode_hint.text = "Endless: Match goes on forever"
+		_:
+			_mode_hint.text = "Default: Play all cards until match is over"
+
+
+func _on_max_turns_submitted(text: String) -> void:
+	_commit_max_turns(text)
+	_max_turns_input.release_focus()
+
+
+func _on_max_turns_blur() -> void:
+	_commit_max_turns(_max_turns_input.text)
+
+
+func _commit_max_turns(text: String) -> void:
+	var raw := text.strip_edges()
+	var n := raw.to_int() if raw.is_valid_int() else 0
+	if n <= 0:
+		n = 20
+	SaveManager.set_match_max_turns(n)
+	_max_turns_input.text = str(n)
 
 
 func _style_line_edit_bare(le: LineEdit) -> void:

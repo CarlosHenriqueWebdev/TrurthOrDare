@@ -75,12 +75,38 @@ func clear_pass_display_path() -> void:
 
 # --- Gameplay ---
 
+# Game mode is one of "default", "limited", "endless".
+#   default — play until the deck runs out (current behaviour)
+#   limited — play until Match Max Turns is hit (placeholder for now)
+#   endless — deck recycles, no natural end
+func get_game_mode() -> String:
+	var m := str(_config.get_value("gameplay", "game_mode", "default"))
+	return m if m in ["default", "limited", "endless"] else "default"
+
+
+func set_game_mode(mode: String) -> void:
+	if not mode in ["default", "limited", "endless"]:
+		mode = "default"
+	_config.set_value("gameplay", "game_mode", mode)
+	_save()
+
+
+# Backwards-compat wrapper — existing callers keep working.
 func get_endless_mode() -> bool:
-	return bool(_config.get_value("gameplay", "endless", false))
+	return get_game_mode() == "endless"
 
 
 func set_endless_mode(value: bool) -> void:
-	_config.set_value("gameplay", "endless", value)
+	set_game_mode("endless" if value else "default")
+
+
+# Max turn count for the "limited" game mode.
+func get_match_max_turns() -> int:
+	return int(_config.get_value("gameplay", "match_max_turns", 20))
+
+
+func set_match_max_turns(value: int) -> void:
+	_config.set_value("gameplay", "match_max_turns", max(1, value))
 	_save()
 
 
