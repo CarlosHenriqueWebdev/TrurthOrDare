@@ -90,7 +90,7 @@ func _build() -> void:
 	_path_input.text_submitted.connect(_on_path_submitted)
 	input_row.add_child(_path_input)
 
-	_clear_btn = StyledButton.create("CLEAR", Design.TERTIARY, "", 32, true, true)
+	_clear_btn = StyledButton.create("CLEAR", Design.EIGHT, "", 32, true, true)
 	_clear_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_clear_btn.pressed.connect(_on_clear)
 	input_row.add_child(_clear_btn)
@@ -111,7 +111,7 @@ func _build() -> void:
 	var view_icon := Design.ICON_CSV
 	if not ResourceLoader.exists(view_icon):
 		view_icon = ""
-	_view_btn = StyledButton.create("VIEW CSV FORMAT & EXAMPLE", Design.PRIMARY, view_icon)
+	_view_btn = StyledButton.create("VIEW CSV FORMAT & EXAMPLE", Design.TERTIARY, view_icon)
 	_view_btn.pressed.connect(_show_format)
 	inner.add_child(_view_btn)
 

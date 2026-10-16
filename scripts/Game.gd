@@ -220,9 +220,10 @@ func _update_info() -> void:
 	# cards_played is 0-based internally; display it 1-based.
 	var card_num := GameState.cards_played + 1
 	var card_label := "Card %02d" % card_num
-	if not GameState.is_endless():
+	# Only the default mode shows "NN/MM" — endless and limited recycle
+	# the deck, so a denominator would be misleading.
+	if not GameState.is_deck_recycling():
 		var deck_max := DataManager.truths.size() + DataManager.dares.size()
-		# Clamp so the game-over state shows the last card, not one past it.
 		card_num = mini(card_num, deck_max)
 		card_label = "Card %02d/%d" % [card_num, deck_max]
 
@@ -236,7 +237,10 @@ func _update_info() -> void:
 		c_drunk,  p_base.get("drunk", 0),
 		c_wasted, p_base.get("wasted", 0),
 	]
-	if p != p_base:
+	# Arrow only appears on an active card with an applied penalty.
+	# At game-over the snapshot still holds the last card's bonus but
+	# there's no next card, so we collapse back to baseline.
+	if p != p_base and not GameState.game_over:
 		var luck_tag := GameState.current_luck_label()
 		odds_bb += "   ->   Player Luck [%s] [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]" % [
 			luck_tag,

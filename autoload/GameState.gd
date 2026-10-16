@@ -209,31 +209,41 @@ func is_endless() -> bool:
 	return SaveManager.get_endless_mode()
 
 
+# True when the current mode doesn't consume cards from the deck —
+# both Endless and Limited recycle the pool instead of exhausting it.
+func is_deck_recycling() -> bool:
+	return SaveManager.get_game_mode() in ["limited", "endless"]
+
+
 func is_game_complete() -> bool:
-	if is_endless():
+	var mode := SaveManager.get_game_mode()
+	if mode == "endless":
 		return false
-	# Limited mode: ends when Match Max Amount (in turns) is reached.
-	if SaveManager.get_game_mode() == "limited":
-		if cards_played >= SaveManager.get_match_max_turns():
-			return true
+	if mode == "limited":
+		# Cap is in rounds — one round = players.size() turns.
+		if players.is_empty():
+			return false
+		var cap_turns := SaveManager.get_match_max_rounds() * players.size()
+		return cards_played >= cap_turns
+	# default mode: end when the deck runs out
 	var t_total := DataManager.truths.size()
 	var d_total := DataManager.dares.size()
 	if t_total + d_total == 0:
 		return true
 	return _used_truth_ids.size() >= t_total and _used_dare_ids.size() >= d_total
 
-
 func cards_remaining() -> int:
 	if is_endless():
 		return -1  # -1 signals "unlimited" to the UI
-	var deck_left := (DataManager.truths.size() - _used_truth_ids.size()) \
+	var mode := SaveManager.get_game_mode()
+	if mode == "limited":
+		if players.is_empty():
+			return 0
+		var total_turns := SaveManager.get_match_max_rounds() * players.size()
+		# -1 because the current card has already been drawn.
+		return maxi(total_turns - cards_played - 1, 0)
+	return (DataManager.truths.size() - _used_truth_ids.size()) \
 		+ (DataManager.dares.size() - _used_dare_ids.size())
-	if SaveManager.get_game_mode() == "limited":
-		# maxi() is the int-typed sibling of max() — the generic max()
-		# returns Variant and would fail the project's warnings-as-errors.
-		var cap_left: int = maxi(SaveManager.get_match_max_turns() - cards_played, 0)
-		return mini(deck_left, cap_left)
-	return deck_left
 
 
 func _effective_round() -> int:
@@ -246,7 +256,7 @@ func _effective_round() -> int:
 
 
 func _has_unused(kind: String) -> bool:
-	if is_endless():
+	if is_deck_recycling():
 		return DataManager.get_prompts_by_type(kind).size() > 0
 	var pool := DataManager.get_prompts_by_type(kind)
 	var used := _used_ids_for(kind)
@@ -260,20 +270,20 @@ func _used_ids_for(kind: String) -> Dictionary:
 func _pick_prompt(kind: String, category: String) -> Dictionary:
 	var pool := DataManager.get_prompts_by_type(kind)
 	var used := _used_ids_for(kind)
-	var endless := is_endless()
+	var recycle := is_deck_recycling()
 
-	# Preferred: matching category (unused in normal mode, any in endless)
+	# Preferred: matching category (unused in default mode, any in endless/limited)
 	var candidates: Array[int] = []
 	for i in pool.size():
-		if not endless and used.has(i):
+		if not recycle and used.has(i):
 			continue
 		if pool[i].get("category", "") == category:
 			candidates.append(i)
 
-	# Fallback: any card (unused in normal mode)
+	# Fallback: any card (unused in default mode)
 	if candidates.is_empty():
 		for i in pool.size():
-			if not endless and used.has(i):
+			if not recycle and used.has(i):
 				continue
 			candidates.append(i)
 
@@ -281,7 +291,7 @@ func _pick_prompt(kind: String, category: String) -> Dictionary:
 		return {}
 
 	var idx: int = candidates[randi() % candidates.size()]
-	if not endless:
+	if not recycle:
 		used[idx] = true
 	return pool[idx]
 

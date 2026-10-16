@@ -17,6 +17,7 @@ var _settings_modal: Modal
 var _add_error := false
 var _hint_label: Label
 var _player_count_label: Label
+var _config_box: BorderedBox
 
 # Configuration / Settings block
 var _streak_toggle: ToggleGroup
@@ -229,6 +230,11 @@ func _refresh() -> void:
 	_update_controls()
 	if _player_list_box:
 		_player_list_box.visible = not _players.is_empty()
+	# Config block appears once the user has enough players to start.
+	# Matches the player list's "grow into it" behaviour and keeps the
+	# first screen focused on the one primary action: adding players.
+	if _config_box:
+		_config_box.visible = _players.size() >= 2
 
 
 func _rebuild_player_rows() -> void:
@@ -448,6 +454,7 @@ func _starts_with_letter(player_name: String) -> bool:
 # =====================================================================
 func _build_config_box() -> BorderedBox:
 	var box := BorderedBox.create()
+	_config_box = box
 
 	# --- Title ---
 	var title_row := HBoxContainer.new()
@@ -510,12 +517,16 @@ func _build_config_box() -> BorderedBox:
 	_limited_input_row.visible = SaveManager.get_game_mode() == "limited"
 
 	var limit_label := Label.new()
-	limit_label.text = "Match Max Amount..."
+	limit_label.text = "Match Max Rounds..."
 	Design.apply_label(limit_label, 10, Design.GRAY)
 	_limited_input_row.add_child(limit_label)
 
+	var limit_row := HBoxContainer.new()
+	limit_row.add_theme_constant_override("separation", 12)
+	_limited_input_row.add_child(limit_row)
+
 	_max_turns_input = LineEdit.new()
-	_max_turns_input.text = str(SaveManager.get_match_max_turns())
+	_max_turns_input.text = str(SaveManager.get_match_max_rounds())
 	_max_turns_input.max_length = 4
 	_max_turns_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_max_turns_input.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -525,7 +536,16 @@ func _build_config_box() -> BorderedBox:
 	_style_line_edit_bare(_max_turns_input)
 	_max_turns_input.text_submitted.connect(_on_max_turns_submitted)
 	_max_turns_input.focus_exited.connect(_on_max_turns_blur)
-	_limited_input_row.add_child(_max_turns_input)
+	_max_turns_input.text_changed.connect(_on_max_turns_changed)
+	limit_row.add_child(_max_turns_input)
+
+	# Quick-pick presets — same trick as the CSV CLEAR/UPLOAD row, just
+	# three values instead of two actions.
+	for preset in [5, 10, 20]:
+		var pb := StyledButton.create(str(preset), Design.SEVEN, "", 32, true, true)
+		pb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pb.pressed.connect(_on_preset_rounds.bind(preset))
+		limit_row.add_child(pb)
 
 	var underline := ColorRect.new()
 	underline.color = Design.GRAY
@@ -603,9 +623,30 @@ func _commit_max_turns(text: String) -> void:
 	var raw := text.strip_edges()
 	var n := raw.to_int() if raw.is_valid_int() else 0
 	if n <= 0:
-		n = 20
-	SaveManager.set_match_max_turns(n)
+		n = 5
+	SaveManager.set_match_max_rounds(n)
 	_max_turns_input.text = str(n)
+
+
+# LineEdit has no numeric mode in Godot 4, so we sanitise on the
+# text_changed signal. Blocking signals while we rewrite prevents an
+# infinite re-trigger loop.
+func _on_max_turns_changed(new_text: String) -> void:
+	var filtered := ""
+	for c in new_text:
+		if c >= "0" and c <= "9":
+			filtered += c
+	if filtered == new_text:
+		return
+	_max_turns_input.set_block_signals(true)
+	_max_turns_input.text = filtered
+	_max_turns_input.caret_column = filtered.length()
+	_max_turns_input.set_block_signals(false)
+
+
+func _on_preset_rounds(value: int) -> void:
+	SaveManager.set_match_max_rounds(value)
+	_max_turns_input.text = str(value)
 
 
 func _style_line_edit_bare(le: LineEdit) -> void:

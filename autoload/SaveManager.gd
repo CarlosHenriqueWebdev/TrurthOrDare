@@ -100,13 +100,15 @@ func set_endless_mode(value: bool) -> void:
 	set_game_mode("endless" if value else "default")
 
 
-# Max turn count for the "limited" game mode.
-func get_match_max_turns() -> int:
-	return int(_config.get_value("gameplay", "match_max_turns", 20))
+# Round cap for the "limited" game mode. One round = every player has
+# taken one turn, so the effective turn cap is value * players.size().
+# Default 5 keeps the first experience short.
+func get_match_max_rounds() -> int:
+	return int(_config.get_value("gameplay", "match_max_rounds", 5))
 
 
-func set_match_max_turns(value: int) -> void:
-	_config.set_value("gameplay", "match_max_turns", max(1, value))
+func set_match_max_rounds(value: int) -> void:
+	_config.set_value("gameplay", "match_max_rounds", maxi(1, value))
 	_save()
 
 
