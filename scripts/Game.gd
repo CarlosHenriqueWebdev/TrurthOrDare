@@ -33,20 +33,26 @@ func _build() -> void:
 	# Layout root is a plain Control. Header and footer are added later
 	# (as siblings) so Godot's reverse-order GUI picker checks them
 	# before the scroll content that bleeds behind them.
-	var root := Control.new()
+		# Root is a VBoxContainer so the gaps between chrome and the scroll
+	# are structural (16px spacers) rather than magic offsets. Godot
+	# computes the scroll's height from whatever the header and footer
+	# leave behind, so no manual offset needs to know their real sizes.
+	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_theme_constant_override("separation", 0)
 	add_child(root)
 
-	# Scroll fills the middle area; clip is disabled so a card taller
-	# than the visible slot bleeds up behind the player box and down
-	# behind the footer. Content is padded internally so the first card
-	# starts below the player box overlay.
+	var header := AppHeader.create()
+	header.settings_pressed.connect(_on_settings_pressed)
+	header.logo_pressed.connect(_on_back_to_menu)
+	root.add_child(header)
+
+	root.add_child(_spacer(16))
+
 	_prompt_scroll = ScrollContainer.new()
 	_prompt_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_prompt_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_prompt_scroll.offset_top    = int(Design.HEADER_HEIGHT) + 16
-	_prompt_scroll.offset_bottom = -(int(Design.FOOTER_HEIGHT) + 16)
-	_prompt_scroll.clip_contents = false
+	_prompt_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_prompt_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	root.add_child(_prompt_scroll)
 	var scroll := _prompt_scroll
 
@@ -61,37 +67,25 @@ func _build() -> void:
 	_content_col.add_theme_constant_override("separation", 0)
 	content_margin.add_child(_content_col)
 
-	# Room at the top of the scroll for the player box overlay (drawn
-	# separately, on top of the scroll).
-	_content_col.add_child(_spacer(CurrentPlayerBox.HEIGHT + 16))
+	# Player box at the top of the scroll content.
+	_current_player_box = CurrentPlayerBox.make("", "sober", 1, 1)
+	_content_col.add_child(_current_player_box)
 
-	# Prompt area — fills remaining height and centers its content.
+	# 16px gap between the player box and the prompt card, and between
+	# the card and the footer. Structural spacers so they hold whether
+	# the card is short or tall.
+	_content_col.add_child(_spacer(16))
+
 	_prompt_area = VBoxContainer.new()
 	_prompt_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_prompt_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_prompt_area.alignment = BoxContainer.ALIGNMENT_CENTER
 	_content_col.add_child(_prompt_area)
 
-	# Bottom spacer so the card sits 16px above the footer when the scroll
-	# is scrolled to the max. Without it the card bottom is flush.
-	_content_col.add_child(_spacer(16))
-
 	_build_footer(root)
 
-	# Header and footer added after the scroll so Godot's picker finds
-	# them first. Both anchored, so they don't need VBox positioning.
-	var header := AppHeader.create()
-	header.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	header.settings_pressed.connect(_on_settings_pressed)
-	header.logo_pressed.connect(_on_back_to_menu)
-	root.add_child(header)
-	_footer.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_footer.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	root.add_child(_spacer(16))
 	root.add_child(_footer)
-
-	# Player box overlay — drawn on top of the scroll, does not scroll.
-	_current_player_box = CurrentPlayerBox.make("", "sober", 1, 1)
-	_place_player_box_overlay(_current_player_box)
 
 	_settings_modal = Modal.create()
 	var settings_panel := SettingsPanel.create(true)
@@ -177,13 +171,15 @@ func _build_footer(_root: Control) -> void:
 # STATE
 # =====================================================================
 func _refresh() -> void:
-	# Rebuild player box as an overlay (drawn above the scroll)
+	# Rebuild player box
 	if is_instance_valid(_current_player_box):
+		_content_col.remove_child(_current_player_box)
 		_current_player_box.queue_free()
 	var idx := GameState.current_index + 1
 	var total := GameState.players.size()
 	_current_player_box = CurrentPlayerBox.make(GameState.current_player(), GameState.current_category, idx, total)
-	_place_player_box_overlay(_current_player_box)
+	_content_col.add_child(_current_player_box)
+	_content_col.move_child(_current_player_box, 0)
 
 	# Prompt area
 	for child in _prompt_area.get_children():
@@ -405,15 +401,3 @@ func _spacer(h: int) -> Control:
 	s.custom_minimum_size = Vector2(0, h)
 	s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return s
-
-
-# Place the player box as a fixed overlay below the header, drawn on top
-# of the scroll so the card can bleed behind it without covering it.
-func _place_player_box_overlay(box: Control) -> void:
-	box.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	box.offset_left   = 16
-	box.offset_right  = -16
-	box.offset_top    = Design.HEADER_HEIGHT + 16
-	box.offset_bottom = Design.HEADER_HEIGHT + 16 + CurrentPlayerBox.HEIGHT
-	box.z_index = 5
-	add_child(box)

@@ -5,14 +5,6 @@ const NAME_MAX_LENGTH := 16
 const CONTENT_SIDE_PAD := 16
 const SECTION_GAP := 16
 
-# Experimental: when true, the setup scroll's content is drawn without
-# clipping at the scroll rect, letting it spill into the spacer rows
-# above and below. Header and footer get bumped to a higher z_index so
-# they still draw on top. Flip to false to revert to clipped scrolling.
-# This flag only affects PlayerSetup for now — after evaluating the look,
-# it may be promoted to a Design token and applied to other screens.
-const BLEED_SCROLL := true
-
 var _players: Array[String] = []
 
 var _name_input: LineEdit
@@ -116,9 +108,6 @@ func _build() -> void:
 	_start_btn     = footer.get_button("start")
 	if _randomize_btn:
 		_randomize_btn.suppress_click_sound = true
-
-	if BLEED_SCROLL:
-		UiUtils.enable_scroll_bleed(scroll, header, footer)
 
 	_settings_modal = Modal.create()
 	var settings_panel := SettingsPanel.create(true)

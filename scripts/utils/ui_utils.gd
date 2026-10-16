@@ -83,14 +83,3 @@ static func _walk_scroll_content(root: Node) -> void:
 					c.mouse_filter = Control.MOUSE_FILTER_PASS
 		_walk_scroll_content(child)
 
-# Scroll "bleed" — when enabled, the ScrollContainer's content is not
-# clipped at its rect, so it visually flows past the top and bottom
-# edges into surrounding chrome (header, footer, spacers). The overlay
-# controls are given a higher z_index so they still draw on top of the
-# bleeding content. Call this after the scroll and overlays are added.
-static func enable_scroll_bleed(scroll: ScrollContainer, top_overlay: Control = null, bottom_overlay: Control = null) -> void:
-	scroll.clip_contents = false
-	if top_overlay:
-		top_overlay.z_index = 1
-	if bottom_overlay:
-		bottom_overlay.z_index = 1
