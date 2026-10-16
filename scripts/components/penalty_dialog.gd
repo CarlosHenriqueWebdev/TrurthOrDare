@@ -26,10 +26,13 @@ func _build() -> void:
 	_modal = Modal.create()
 	add_child(_modal)
 
+	# VBox separation is 0 — all gaps are explicit so the layout can hit
+	# exact pixel values (title→caption=16, caption→luck=8, luck→scroll=12).
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
+	col.add_theme_constant_override("separation", 0)
 
 	col.add_child(_make_title_row())
+	col.add_child(_spacer(16))
 
 	# Two stacked labels instead of one. The first is a plain gray caption
 	# about the CSV limits; the second is the luck explainer, tinted with
@@ -44,7 +47,7 @@ func _build() -> void:
 	limits.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	Design.apply_label(limits, 10, Design.GRAY)
 	col.add_child(limits)
-	col.add_child(_spacer(6))
+	col.add_child(_spacer(8))
 
 	var luck_help := Label.new()
 	luck_help.text = (
@@ -59,7 +62,7 @@ func _build() -> void:
 	luck_help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	Design.apply_label(luck_help, 10, Design.EIGHT.lightened(0.45))
 	col.add_child(luck_help)
-	col.add_child(_spacer(4))
+	col.add_child(_spacer(12))
 
 	# Scroll wrapper — everything between the title and the confirm button
 	# scrolls when the option list is taller than the cap. The cap itself
@@ -80,7 +83,7 @@ func _build() -> void:
 		_scroll_content.add_child(section["group_box"])
 		_sections.append(section)
 
-	col.add_child(_spacer(4))
+	col.add_child(_spacer(12))
 
 	var confirm := StyledButton.create("CONFIRM PENALTY & PASS", Design.SECONDARY)
 	confirm.pressed.connect(_on_confirm)
