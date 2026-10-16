@@ -31,27 +31,34 @@ func _build() -> void:
 
 	col.add_child(_make_title_row())
 
-	# Compact luck explainer. Uses ERROR_TEXT so it reads as a distinct
-	# informational block instead of a second gray label stacked under
-	# the title.
-	var hint := Label.new()
-	hint.text = (
-		"Max %d groups · %d options each\n"
-		+ "\n"
-		+ "\"Luck\" shifts your next card's difficulty:\n"
+	# Two stacked labels instead of one. The first is a plain gray caption
+	# about the CSV limits; the second is the luck explainer, tinted with
+	# Design.EIGHT lightened so it reads on the black background — same
+	# trick ODDS_LIGHTEN uses for the category colours.
+	var limits := Label.new()
+	limits.text = "Max %d groups · %d options each" % [
+		Design.MAX_PENALTY_GROUPS,
+		Design.MAX_PENALTY_OPTIONS_GROUP,
+	]
+	limits.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	limits.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	Design.apply_label(limits, 10, Design.GRAY)
+	col.add_child(limits)
+	col.add_child(_spacer(6))
+
+	var luck_help := Label.new()
+	luck_help.text = (
+		"\"Luck\" shifts your next card's difficulty:\n"
 		+ "  -2 (easy penalty)   ->  harder\n"
 		+ "  -1                  ->  slightly harder\n"
 		+ "   0                  ->  no change\n"
 		+ "  +1 (harsh penalty)  ->  easier\n"
 		+ "Harder = more Drunk/Wasted.  Easier = more Sober/Tipsy."
-	) % [
-		Design.MAX_PENALTY_GROUPS,
-		Design.MAX_PENALTY_OPTIONS_GROUP,
-	]
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	Design.apply_label(hint, 10, Design.ERROR_TEXT)
-	col.add_child(hint)
+	)
+	luck_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	luck_help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	Design.apply_label(luck_help, 10, Design.EIGHT.lightened(0.45))
+	col.add_child(luck_help)
 	col.add_child(_spacer(4))
 
 	# Scroll wrapper — everything between the title and the confirm button
