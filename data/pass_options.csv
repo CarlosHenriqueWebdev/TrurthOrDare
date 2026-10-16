@@ -1,6 +1,6 @@
-group,label
-Drink,Drink a beer
-Drink,Drink a glass of wine
-Drink,Take a sip of your drink
-Drink,Take a shot
-Drink,Let the group choose your next drink
+group,label,level
+Drink,Drink a beer,2
+Drink,Drink a glass of wine,2
+Drink,Take a sip of your drink,1
+Drink,Let the group choose your next drink,3
+Drink,Take a shot,4

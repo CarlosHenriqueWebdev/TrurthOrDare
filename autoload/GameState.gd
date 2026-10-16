@@ -28,6 +28,11 @@ const TYPE_BALANCE_FACTOR := 0.05
 const TYPE_CHANCE_MIN := 0.2
 const TYPE_CHANCE_MAX := 0.8
 
+# One "unit" of penalty escalation shifts 10% of total weight from the
+# two easy categories (sober/tipsy) to the two hard ones (drunk/wasted).
+# Levels map to: 1 → +1.0, 2 → +0.5, 3 → 0, 4 → −0.5 (i.e. easier).
+const PENALTY_ESCALATION_UNIT := 0.10
+
 var players: Array[String] = []
 var current_index: int = 0
 var cards_played: int = 0
@@ -43,6 +48,8 @@ var _used_truth_ids: Dictionary = {}
 var _used_dare_ids: Dictionary = {}
 var _last_type_by_player: Dictionary = {}   # player -> "truth" | "dare"
 var _same_type_streak: Dictionary = {}      # player -> consecutive count of same type
+var _pending_escalation: Dictionary = {}    # player -> float bonus, consumed on next draw
+var _last_rolled_weights: Dictionary = {}   # weights used for the currently displayed card
 
 
 func start_game(player_names: Array[String]) -> void:
@@ -55,6 +62,8 @@ func start_game(player_names: Array[String]) -> void:
 	_used_dare_ids.clear()
 	_last_type_by_player.clear()
 	_same_type_streak.clear()
+	_pending_escalation.clear()
+	_last_rolled_weights.clear()
 	for p in players:
 		_player_stats[p] = {"truths": 0, "dares": 0}
 	_roll_prompt()
@@ -96,6 +105,30 @@ func stats_for(player_name: String) -> Dictionary:
 	return _player_stats.get(player_name, {"truths": 0, "dares": 0})
 
 
+# Called by Game when the player confirms a penalty. The level is turned
+# into an escalation bonus that will apply to that player's next card draw,
+# then be cleared. Levels stack additively if the same player skips twice
+# in a row before drawing.
+func apply_penalty_level(player: String, level: int) -> void:
+	var bonus := _level_to_bonus(level)
+	if bonus == 0.0:
+		return
+	_pending_escalation[player] = _pending_escalation.get(player, 0.0) + bonus
+
+
+static func _level_to_bonus(level: int) -> float:
+	# Matches the "luck" names shown on the penalty buttons:
+	#   1 (easiest) → +1.0  hardest cards later
+	#   2           → +0.5
+	#   3           →  0.0  baseline
+	#   4 (hardest) → -0.5  easier cards later
+	match level:
+		1: return  1.0
+		2: return  0.5
+		4: return -0.5
+		_: return  0.0
+
+
 func truth_chance_for_current() -> float:
 	return 1.0 - dare_chance_for_current()
 
@@ -133,7 +166,19 @@ func category_weights() -> Dictionary:
 
 
 func category_percentages() -> Dictionary:
-	var weights := category_weights()
+	# Prefer the weights that produced the current card — they include any
+	# penalty escalation the current player had pending at roll time.
+	var weights := _last_rolled_weights if not _last_rolled_weights.is_empty() else category_weights()
+	return _weights_to_percentages(weights)
+
+
+# Same as above, but always from the unmodified baseline weights — used by
+# the footer to show the "before" side of a penalty escalation.
+func category_percentages_baseline() -> Dictionary:
+	return _weights_to_percentages(category_weights())
+
+
+func _weights_to_percentages(weights: Dictionary) -> Dictionary:
 	var total := 0.0
 	for w in weights.values():
 		total += w
@@ -281,6 +326,19 @@ func _record_type_streak(player: String, type: String) -> void:
 
 func _roll_category() -> String:
 	var weights := category_weights()
+
+	# Consume any pending penalty escalation for the current player.
+	var player := current_player()
+	var bonus: float = _pending_escalation.get(player, 0.0)
+	if bonus != 0.0:
+		weights = _apply_escalation(weights, bonus)
+		_pending_escalation.erase(player)
+
+	# Snapshot the weights we actually rolled with. The footer reads this
+	# so the odds line reflects any penalty escalation that was applied
+	# to the current card, not just the unmodified baseline.
+	_last_rolled_weights = weights.duplicate()
+
 	var total := 0.0
 	for w in weights.values():
 		total += w
@@ -293,3 +351,17 @@ func _roll_category() -> String:
 		if r <= acc:
 			return cat
 	return "sober"
+
+
+# Shift weights according to the bonus. Positive bonus → harder categories
+# (drunk/wasted) get more weight; negative → easier (sober/tipsy) do.
+# The "shape" of the shift is asymmetric on purpose: wasted/sober move twice
+# as much as drunk/tipsy, so the extremes feel stronger than the middle.
+func _apply_escalation(weights: Dictionary, bonus: float) -> Dictionary:
+	var shift := bonus * PENALTY_ESCALATION_UNIT
+	return {
+		"sober":  clampf(weights.get("sober",  0.4) - shift,       CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT),
+		"tipsy":  clampf(weights.get("tipsy",  0.3) - shift * 0.5, CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT),
+		"drunk":  clampf(weights.get("drunk",  0.2) + shift * 0.5, CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT),
+		"wasted": clampf(weights.get("wasted", 0.1) + shift,       CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT),
+	}

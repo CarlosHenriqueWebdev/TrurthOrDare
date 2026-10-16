@@ -95,7 +95,10 @@ func load_pass_options(path: String) -> bool:
 			new_groups[group] = []
 		if new_groups[group].size() >= Design.MAX_PENALTY_OPTIONS_GROUP:
 			continue
-		new_groups[group].append(label)
+		new_groups[group].append({
+			"label": label,
+			"level": _parse_level(cols),
+		})
 	f.close()
 	if new_groups.is_empty():
 		return false
@@ -198,7 +201,10 @@ func _load_pass_options(path: String) -> void:
 			pass_groups[group] = []
 		if pass_groups[group].size() >= Design.MAX_PENALTY_OPTIONS_GROUP:
 			continue
-		pass_groups[group].append(label)
+		pass_groups[group].append({
+			"label": label,
+			"level": _parse_level(cols),
+		})
 	f.close()
 
 
@@ -221,6 +227,19 @@ func _copy_to_user(src: String, dst: String) -> bool:
 func _delete_user_file(path: String) -> void:
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+# Read the optional third column (level). Missing/invalid → default 1.
+# Clamped to 1-4 so a stray 99 in the CSV can't break the escalation math.
+func _parse_level(cols: PackedStringArray) -> int:
+	if cols.size() < 3:
+		return 1
+	var raw := cols[2].strip_edges()
+	if raw.is_empty():
+		return 1
+	if not raw.is_valid_int():
+		return 1
+	return clampi(raw.to_int(), 1, 4)
 
 
 func _parse_line(line: String) -> PackedStringArray:

@@ -259,13 +259,16 @@ func _show_format() -> void:
 func _format_text() -> String:
 	if _mode == MODE_PENALTY:
 		return "PENALTY OPTIONS CSV\n\n" \
-			+ "Header:  group,label\n\n" \
-			+ "Drink,Beer\n" \
-			+ "Drink,Wine\n" \
-			+ "Drink,Spirits\n" \
-			+ "Custom 1,Skip next turn\n" \
-			+ "Custom 2,Do a shot\n\n" \
+			+ "Header:  group,label,level\n\n" \
+			+ "Drink,Beer,2\n" \
+			+ "Drink,Wine,2\n" \
+			+ "Drink,Spirits,3\n" \
+			+ "Custom 1,Skip next turn,1\n" \
+			+ "Custom 2,Do a shot,4\n\n" \
 			+ "Rows with the same group name are shown together.\n" \
+			+ "level is optional (1-4). Default: 1.\n" \
+			+ "1 = easiest penalty — your next card is harder.\n" \
+			+ "4 = hardest penalty — your next card is easier.\n" \
 			+ "Only the header row and data rows — no example text."
 	return "CARD CSV FORMAT\n\n" \
 		+ "Header:  type,category,text\n\n" \

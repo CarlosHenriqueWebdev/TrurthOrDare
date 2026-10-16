@@ -55,29 +55,32 @@ func _build() -> void:
 	# Open the first group by default and never let it close.
 	# Auto-select its first sub-option.
 	if not _sections.is_empty():
-		var first: Dictionary = _sections[0]
-		_open_group = first["group"]
-		_refresh_visibility()
-		_refresh_arrows()
-		var labels: Array = DataManager.pass_groups.get(first["group"], [])
-		if not labels.is_empty():
-			_selection = {"group": first["group"], "label": labels[0]}
-		_refresh_checkboxes()
+		_select_default()
 
 
 func open() -> void:
 	# Reset so each call starts fresh with the first group + its first option.
-	_selection = {"group": "", "label": ""}
+	_selection = {"group": "", "label": "", "level": 1}
 	if not _sections.is_empty():
-		var first: Dictionary = _sections[0]
-		_open_group = first["group"]
-		_refresh_visibility()
-		_refresh_arrows()
-		var labels: Array = DataManager.pass_groups.get(first["group"], [])
-		if not labels.is_empty():
-			_selection = {"group": first["group"], "label": labels[0]}
-		_refresh_checkboxes()
+		_select_default()
 	_modal.open()
+
+
+func _select_default() -> void:
+	# Picks the first group's first option as the default selection.
+	var first: Dictionary = _sections[0]
+	_open_group = first["group"]
+	_refresh_visibility()
+	_refresh_arrows()
+	var entries: Array = DataManager.pass_groups.get(first["group"], [])
+	if not entries.is_empty():
+		var entry: Dictionary = entries[0]
+		_selection = {
+			"group": first["group"],
+			"label": entry.get("label", ""),
+			"level": int(entry.get("level", 1)),
+		}
+	_refresh_checkboxes()
 
 
 func _on_confirm() -> void:
@@ -110,9 +113,13 @@ func _make_section(group_name: String) -> Dictionary:
 	sub_container.add_theme_constant_override("separation", 12)
 	sub_box.add_with_margins(sub_container, 12, 12, 12, 12)
 
-	var labels: Array = DataManager.pass_groups.get(group_name, [])
-	for i in labels.size():
-		sub_container.add_child(_make_option_row(group_name, labels[i]))
+	var entries: Array = DataManager.pass_groups.get(group_name, [])
+	for entry in entries:
+		sub_container.add_child(_make_option_row(
+			group_name,
+			entry.get("label", ""),
+			int(entry.get("level", 1)),
+		))
 
 	# Header + 12-gap + sub, wrapped so the gap collapses when sub is hidden.
 	var group_box := VBoxContainer.new()
@@ -129,20 +136,35 @@ func _make_section(group_name: String) -> Dictionary:
 	}
 
 
-func _make_option_row(group_name: String, label: String) -> StyledButton:
+func _make_option_row(group_name: String, label: String, level: int) -> StyledButton:
 	# Groups are user-defined (uploaded via CSV), so we don't colour by
-	# group name. Selected / unselected is the only visual distinction —
-	# matches the ToggleButton pattern used elsewhere in settings.
+	# group name. The luck suffix (shown only for levels 1, 2 and 4)
+	# hints at the effect the option will have on the player's next card.
+	var luck_text := _level_luck_text(level)
 	var display := _truncate_label(label)
+	if not luck_text.is_empty():
+		display += "   ·   " + luck_text
 	var btn := StyledButton.create(display, Design.SIX, "", SUB_OPTION_HEIGHT)
 	btn.suppress_click_sound = true
 	btn.pressed.connect(func():
 		AudioManager.play_click()
-		_select(group_name, label)
+		_select(group_name, label, level)
 	)
 	btn.set_meta("group", group_name)
 	btn.set_meta("label", label)
+	btn.set_meta("level", level)
 	return btn
+
+
+# Shorthand shown on the penalty button. Level 3 is baseline and shows
+# nothing, so the "no effect" case is the empty string.
+#   1 → "−2 luck"   2 → "−1 luck"   3 → ""   4 → "+1 luck"
+static func _level_luck_text(level: int) -> String:
+	match level:
+		1: return "−2 luck"
+		2: return "−1 luck"
+		4: return "+1 luck"
+		_: return ""
 
 func _toggle_group(group_name: String) -> void:
 	# Only-one-open, and never allow closing the active one.
@@ -166,8 +188,8 @@ func _refresh_arrows() -> void:
 		header.set_icon(Design.ICON_OPEN_CATEGORY if is_open else Design.ICON_ARROW_DOWN)
 
 
-func _select(group_name: String, label: String) -> void:
-	_selection = {"group": group_name, "label": label}
+func _select(group_name: String, label: String, level: int) -> void:
+	_selection = {"group": group_name, "label": label, "level": level}
 	_refresh_checkboxes()
 
 

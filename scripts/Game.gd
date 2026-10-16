@@ -197,7 +197,8 @@ func _update_info() -> void:
 
 	var t := int(round(GameState.truth_chance_for_current() * 100.0))
 	var d := int(round(GameState.dare_chance_for_current() * 100.0))
-	var p := GameState.category_percentages()
+	var p := GameState.category_percentages()              # applied for the current card
+	var p_base := GameState.category_percentages_baseline() # unmodified baseline
 
 	var c_sober  := Design.odds_color("sober").to_html(false)
 	var c_tipsy  := Design.odds_color("tipsy").to_html(false)
@@ -225,17 +226,28 @@ func _update_info() -> void:
 		card_num = mini(card_num, deck_max)
 		card_label = "Card %02d/%d" % [card_num, deck_max]
 
-	_info_rich.text = \
-		"%s   Chances [color=#%s]T %d%%[/color] / [color=#%s]D %d%%[/color]\n" % [
-			card_label, green, t, orange, d,
-		] + \
-		"Odds [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]   (%s)" % [
+	# Odds line — baseline first, then "Player Luck" showing the modified
+	# values that were used to roll the current card. The arrow segment
+	# only appears when a penalty escalation was in effect; on ordinary
+	# cards the two sets are identical and we collapse to one.
+	var odds_bb := "Odds [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]" % [
+		c_sober,  p_base.get("sober", 0),
+		c_tipsy,  p_base.get("tipsy", 0),
+		c_drunk,  p_base.get("drunk", 0),
+		c_wasted, p_base.get("wasted", 0),
+	]
+	if p != p_base:
+		odds_bb += "   ->   Player Luck [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]" % [
 			c_sober,  p.get("sober", 0),
 			c_tipsy,  p.get("tipsy", 0),
 			c_drunk,  p.get("drunk", 0),
 			c_wasted, p.get("wasted", 0),
-			remaining_text,
 		]
+
+	_info_rich.text = \
+		"%s   Chances [color=#%s]T %d%%[/color] / [color=#%s]D %d%%[/color]\n" % [
+			card_label, green, t, orange, d,
+		] + odds_bb + "   (%s)" % remaining_text
 
 
 func _make_game_over_panel() -> BorderedBox:
@@ -291,9 +303,13 @@ func _on_forfeit() -> void:
 func _on_penalty_confirmed(selection: Dictionary) -> void:
 	var group: String = selection.get("group", "")
 	var label: String = selection.get("label", "")
+	var level: int = int(selection.get("level", 1))
 	if group.is_empty() or label.is_empty():
 		ToastManager.show_message("Select a penalty", 2.0, true)
 		return
+	# Store the escalation against the player who is *about to skip*, so it
+	# triggers on their next turn rather than the next player's.
+	GameState.apply_penalty_level(GameState.current_player(), level)
 	AudioManager.play_penalty()
 	ToastManager.show_message("Passed: %s - %s" % [group, label])
 	GameState.advance()
