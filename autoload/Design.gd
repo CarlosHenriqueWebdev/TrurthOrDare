@@ -37,7 +37,11 @@ const CATEGORY_COLORS := {
 const ODDS_LIGHTEN := 0.45
 
 # --- Limits ---
-const MAX_PENALTY_GROUPS        := 6
+# Displayed limits for the penalty dialog. 5 groups × 6 options each
+# keeps the modal readable on phones even with scroll — much more and
+# it feels like a wall of buttons. CSV rows beyond these limits are
+# silently dropped, so generous uploads still work, just trimmed.
+const MAX_PENALTY_GROUPS        := 5
 const MAX_PENALTY_OPTIONS_GROUP := 6
 const MAX_TOAST_WIDTH           := 320
 # Character cap for penalty group names and sub-option labels.

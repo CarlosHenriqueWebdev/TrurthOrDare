@@ -12,20 +12,21 @@ static func create(
 	height := Design.BUTTON_HEIGHT,
 	hug := false,
 	compact := false,
-	center_content := false
+	center_content := false,
+	trailing_text := ""
 ) -> StyledButton:
 	var btn := StyledButton.new()
-	btn._build(label_text, bg_color, icon_path, height, false, hug, compact, center_content)
+	btn._build(label_text, bg_color, icon_path, height, false, hug, compact, center_content, trailing_text)
 	return btn
 
 
 static func create_icon_only(icon_path: String, bg_color: Color, height := Design.BUTTON_HEIGHT) -> StyledButton:
 	var btn := StyledButton.new()
-	btn._build("", bg_color, icon_path, height, true, true, false, true)
+	btn._build("", bg_color, icon_path, height, true, true, false, true, "")
 	return btn
 
 
-func _build(label_text: String, bg_color: Color, icon_path: String, height: int, icon_only: bool, hug: bool, compact: bool, center_content: bool) -> void:
+func _build(label_text: String, bg_color: Color, icon_path: String, height: int, icon_only: bool, hug: bool, compact: bool, center_content: bool, trailing_text: String = "") -> void:
 	_bg_color = bg_color
 	custom_minimum_size = Vector2(0, height)
 	focus_mode = Control.FOCUS_NONE
@@ -69,13 +70,17 @@ func _build(label_text: String, bg_color: Color, icon_path: String, height: int,
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(row)
 
+	var has_trailing := not trailing_text.is_empty()
 	if not icon_only:
 		var lbl := Label.new()
 		lbl.text = label_text
 		Design.apply_label(lbl, font_size)
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		if center_content or hug:
+		# When trailing text is present, the label shrinks to its text
+		# width and the gap between label and trailing expands — gives
+		# the CSS justify-between look.
+		if has_trailing or center_content or hug:
 			lbl.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		else:
 			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -84,12 +89,23 @@ func _build(label_text: String, bg_color: Color, icon_path: String, height: int,
 
 		var gap := Control.new()
 		gap.custom_minimum_size = Vector2(12 if center_content else 8, 0)
-		if center_content or hug:
+		if has_trailing:
+			gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		elif center_content or hug:
 			gap.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		else:
 			gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(gap)
+
+		if has_trailing:
+			var trail := Label.new()
+			trail.text = trailing_text
+			Design.apply_label(trail, font_size, Design.GRAY)
+			trail.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			trail.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			trail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(trail)
 
 	var has_icon := not icon_path.is_empty()
 	if has_icon:

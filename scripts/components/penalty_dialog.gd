@@ -8,7 +8,9 @@ const SUB_OPTION_HEIGHT := 44
 var _modal: Modal
 var _sections: Array = []
 var _open_group: String = ""
-var _selection: Dictionary = {"group": "", "label": ""}
+var _selection: Dictionary = {"group": "", "label": "", "level": 1, "index": 0}
+var _scroll: ScrollContainer
+var _scroll_content: VBoxContainer
 
 
 static func create() -> PenaltyDialog:
@@ -29,33 +31,46 @@ func _build() -> void:
 
 	col.add_child(_make_title_row())
 
-	# Long-form luck explainer. Autowrap is on so it wraps on narrow
-	# screens instead of forcing the modal wider.
+	# Compact luck explainer. Uses ERROR_TEXT so it reads as a distinct
+	# informational block instead of a second gray label stacked under
+	# the title.
 	var hint := Label.new()
 	hint.text = (
 		"Max %d groups · %d options each\n"
 		+ "\n"
-		+ "LUCK SYSTEM\n"
-		+ "Passing stores a temporary luck modifier that applies to your next card:\n"
-		+ "  -2 luck (easiest penalty)   ->  next card much harder\n"
-		+ "  -1 luck                     ->  next card harder\n"
-		+ "   0 luck                     ->  no change\n"
-		+ "  +1 luck (harshest penalty)  ->  next card easier\n"
-		+ "Harder = more Drunk/Wasted prompts. Easier = more Sober/Tipsy."
+		+ "\"Luck\" shifts your next card's difficulty:\n"
+		+ "  -2 (easy penalty)   ->  harder\n"
+		+ "  -1                  ->  slightly harder\n"
+		+ "   0                  ->  no change\n"
+		+ "  +1 (harsh penalty)  ->  easier\n"
+		+ "Harder = more Drunk/Wasted.  Easier = more Sober/Tipsy."
 	) % [
 		Design.MAX_PENALTY_GROUPS,
 		Design.MAX_PENALTY_OPTIONS_GROUP,
 	]
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	Design.apply_label(hint, 10, Design.GRAY)
+	Design.apply_label(hint, 10, Design.ERROR_TEXT)
 	col.add_child(hint)
 	col.add_child(_spacer(4))
+
+	# Scroll wrapper — everything between the title and the confirm button
+	# scrolls when the option list is taller than the cap. The cap itself
+	# is computed in _fit_scroll() once the layout has settled.
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(_scroll)
+
+	_scroll_content = VBoxContainer.new()
+	_scroll_content.add_theme_constant_override("separation", 12)
+	_scroll_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_scroll_content)
 
 	var groups := DataManager.pass_groups.keys()
 	for group_name in groups:
 		var section := _make_section(group_name)
-		col.add_child(section["group_box"])
+		_scroll_content.add_child(section["group_box"])
 		_sections.append(section)
 
 	col.add_child(_spacer(4))
@@ -65,6 +80,7 @@ func _build() -> void:
 	col.add_child(confirm)
 
 	_modal.set_content(col)
+	_fit_scroll.call_deferred()
 
 	# Open the first group by default and never let it close.
 	# Auto-select its first sub-option.
@@ -74,10 +90,23 @@ func _build() -> void:
 
 func open() -> void:
 	# Reset so each call starts fresh with the first group + its first option.
-	_selection = {"group": "", "label": "", "level": 1}
+	_selection = {"group": "", "label": "", "level": 1, "index": 0}
 	if not _sections.is_empty():
 		_select_default()
+	_fit_scroll.call_deferred()
 	_modal.open()
+
+
+# Size the scroll to its content, up to a cap so the dialog never spills
+# off the top of the viewport. Recalculated on every open in case the
+# window was resized.
+func _fit_scroll() -> void:
+	if not is_instance_valid(_scroll) or not is_instance_valid(_scroll_content):
+		return
+	var content_h := int(_scroll_content.get_combined_minimum_size().y)
+	var viewport_h := int(get_viewport_rect().size.y)
+	var cap := int(min(420.0, viewport_h * 0.5))
+	_scroll.custom_minimum_size.y = min(content_h, cap)
 
 
 func _select_default() -> void:
@@ -93,13 +122,19 @@ func _select_default() -> void:
 			"group": first["group"],
 			"label": entry.get("label", ""),
 			"level": int(entry.get("level", 1)),
+			"index": 0,
 		}
 	_refresh_checkboxes()
 
 
 func _on_confirm() -> void:
 	_modal.close()
-	confirmed.emit(_selection)
+	# Strip the internal index — Game only cares about group/label/level.
+	confirmed.emit({
+		"group": _selection.get("group", ""),
+		"label": _selection.get("label", ""),
+		"level": int(_selection.get("level", 1)),
+	})
 
 
 func _make_title_row() -> HBoxContainer:
@@ -127,12 +162,17 @@ func _make_section(group_name: String) -> Dictionary:
 	sub_container.add_theme_constant_override("separation", 12)
 	sub_box.add_with_margins(sub_container, 12, 12, 12, 12)
 
+	# Iterate by index so duplicate labels in the CSV ("Beer, Beer, Beer")
+	# get distinct IDs. _refresh_checkboxes matches on (group, index), so
+	# only the clicked row is highlighted.
 	var entries: Array = DataManager.pass_groups.get(group_name, [])
-	for entry in entries:
+	for i in entries.size():
+		var entry: Dictionary = entries[i]
 		sub_container.add_child(_make_option_row(
 			group_name,
 			entry.get("label", ""),
 			int(entry.get("level", 1)),
+			i,
 		))
 
 	# Header + 12-gap + sub, wrapped so the gap collapses when sub is hidden.
@@ -150,23 +190,22 @@ func _make_section(group_name: String) -> Dictionary:
 	}
 
 
-func _make_option_row(group_name: String, label: String, level: int) -> StyledButton:
+func _make_option_row(group_name: String, label: String, level: int, index: int) -> StyledButton:
 	# Groups are user-defined (uploaded via CSV), so we don't colour by
-	# group name. The luck suffix (shown only for levels 1, 2 and 4)
-	# hints at the effect the option will have on the player's next card.
+	# group name. The luck suffix is rendered as a trailing label so it
+	# sits at the right edge of the button (CSS justify-between feel).
 	var luck_text := _level_luck_text(level)
 	var display := _truncate_label(label)
-	if not luck_text.is_empty():
-		display += "   ·   " + luck_text
-	var btn := StyledButton.create(display, Design.SIX, "", SUB_OPTION_HEIGHT)
+	var btn := StyledButton.create(display, Design.SIX, "", SUB_OPTION_HEIGHT, false, false, false, luck_text)
 	btn.suppress_click_sound = true
 	btn.pressed.connect(func():
 		AudioManager.play_click()
-		_select(group_name, label, level)
+		_select(group_name, label, level, index)
 	)
 	btn.set_meta("group", group_name)
 	btn.set_meta("label", label)
 	btn.set_meta("level", level)
+	btn.set_meta("index", index)
 	return btn
 
 
@@ -202,8 +241,8 @@ func _refresh_arrows() -> void:
 		header.set_icon(Design.ICON_OPEN_CATEGORY if is_open else Design.ICON_ARROW_DOWN)
 
 
-func _select(group_name: String, label: String, level: int) -> void:
-	_selection = {"group": group_name, "label": label, "level": level}
+func _select(group_name: String, label: String, level: int, index: int) -> void:
+	_selection = {"group": group_name, "label": label, "level": level, "index": index}
 	_refresh_checkboxes()
 
 
@@ -216,9 +255,11 @@ func _refresh_checkboxes() -> void:
 			var btn: StyledButton = row
 			if not btn.has_meta("group"):
 				continue
+			# Match on (group, index) rather than (group, label) so
+			# duplicate labels in the CSV stay distinct.
 			var matched: bool = (
 				btn.get_meta("group") == _selection["group"]
-				and btn.get_meta("label") == _selection["label"]
+				and btn.get_meta("index") == _selection["index"]
 			)
 			btn.set_bg_color(Design.EIGHT if matched else Design.SIX)
 
