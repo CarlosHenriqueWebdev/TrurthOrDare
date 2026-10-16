@@ -603,9 +603,14 @@ func _build_config_box() -> BorderedBox:
 
 func _on_game_mode_toggled(other_selected: bool) -> void:
 	if other_selected:
-		# First time switching to Other → default to Limited.
+		# First time switching to Other → default to Limited. Also reset
+		# the alt toggle to reflect that choice, otherwise it keeps
+		# whatever state it had from _build() and can show Endless as
+		# active while the underlying mode is Limited. should_emit = false
+		# so this doesn't recursively call _on_alt_mode_toggled.
 		if SaveManager.get_game_mode() == "default":
 			SaveManager.set_game_mode("limited")
+			_alt_mode_toggle.set_on(false, false)
 		_alt_mode_container.visible = true
 	else:
 		SaveManager.set_game_mode("default")
