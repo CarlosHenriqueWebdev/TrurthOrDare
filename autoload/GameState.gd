@@ -7,31 +7,25 @@ extends Node
 
 signal state_changed
 
-const BASE_CATEGORY_WEIGHTS := {
-	"sober": 0.4,
-	"tipsy": 0.3,
-	"drunk": 0.2,
-	"wasted": 0.1,
-}
-
-const CATEGORY_ESCALATION := {
-	"sober": -0.01,
-	"tipsy": 0.0,
-	"drunk": 0.005,
-	"wasted": 0.005,
-}
-
-const CATEGORY_MIN_WEIGHT := 0.05
-const CATEGORY_MAX_WEIGHT := 0.5
+# Category progression is now driven by OddsCalculator — a Gaussian curve
+# sweeping four tiers from round 1 (mostly sober) to the final round
+# (mostly drunk/wasted). This array maps the curve's level indices to
+# the category names used throughout the rest of the code.
+const LEVEL_CATEGORIES: Array[String] = ["sober", "tipsy", "drunk", "wasted"]
 
 const TYPE_BALANCE_FACTOR := 0.05
 const TYPE_CHANCE_MIN := 0.2
 const TYPE_CHANCE_MAX := 0.8
 
-# One "unit" of penalty escalation shifts 10% of total weight from the
-# two easy categories (sober/tipsy) to the two hard ones (drunk/wasted).
-# Levels map to: 1 → +1.0, 2 → +0.5, 3 → 0, 4 → −0.5 (i.e. easier).
-const PENALTY_ESCALATION_UNIT := 0.10
+# How far one "luck unit" pushes the curve position. A full +1.0 bonus
+# (level-1 penalty, "−2 luck") shifts t by 0.15 — noticeable but not
+# jarring. Stacked bonuses accumulate, clamped at the curve ends.
+const PENALTY_LUCK_CURVE_OFFSET := 0.15
+
+# Endless-mode progression window. After this many rounds the curve
+# pins at its hardest tier. Arbitrary but short enough that a normal
+# session sees the whole progression.
+const ENDLESS_PROGRESSION_ROUNDS := 20
 
 var players: Array[String] = []
 var current_index: int = 0
@@ -235,13 +229,53 @@ func _dare_chance_for_player(player: String) -> float:
 	return clampf(0.5 + imbalance * TYPE_BALANCE_FACTOR, TYPE_CHANCE_MIN, TYPE_CHANCE_MAX)
 
 
-func category_weights() -> Dictionary:
-	var r := _effective_round()
+# Number of rounds over which the curve sweeps from easy to hard.
+#   limited → the user's Match Max Rounds (exact)
+#   endless → a fixed window (ENDLESS_PROGRESSION_ROUNDS)
+#   default → estimated from deck size / player count, floor of 5
+func total_rounds_for_odds() -> int:
+	match SaveManager.get_game_mode():
+		"limited":
+			return maxi(SaveManager.get_match_max_rounds(), 1)
+		"endless":
+			return ENDLESS_PROGRESSION_ROUNDS
+		_:
+			if players.is_empty():
+				return 15
+			var deck := DataManager.truths.size() + DataManager.dares.size()
+			@warning_ignore("integer_division")
+			var est := deck / players.size()
+			return maxi(est, 5)
+
+
+# Position on the difficulty curve, 0.0 → 1.0, ignoring pending luck.
+func curve_base_t() -> float:
+	var total := total_rounds_for_odds()
+	if total <= 1:
+		return 0.0
+	return clampf(float(current_round() - 1) / float(total - 1), 0.0, 1.0)
+
+
+# Luck offset for the current player, in curve units.
+func curve_luck_offset() -> float:
+	if players.is_empty():
+		return 0.0
+	var bonus: float = _pending_escalation.get(current_player(), 0.0)
+	return bonus * PENALTY_LUCK_CURVE_OFFSET
+
+
+func _curve_odds_as_probabilities(t: float) -> Dictionary:
+	var odds := OddsCalculator.get_odds(current_round(), total_rounds_for_odds(), t)
 	var out := {}
-	for cat in BASE_CATEGORY_WEIGHTS.keys():
-		var w: float = BASE_CATEGORY_WEIGHTS[cat] + CATEGORY_ESCALATION.get(cat, 0.0) * r
-		out[cat] = clampf(w, CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT)
+	for i in LEVEL_CATEGORIES.size():
+		out[LEVEL_CATEGORIES[i]] = odds[i] / 100.0
 	return out
+
+
+# Category probabilities for the current roll, luck included.
+func category_weights() -> Dictionary:
+	var t := clampf(curve_base_t() + curve_luck_offset(), 0.0, 1.0)
+	return _curve_odds_as_probabilities(t)
 
 
 func category_percentages() -> Dictionary:
@@ -251,10 +285,9 @@ func category_percentages() -> Dictionary:
 	return _weights_to_percentages(weights)
 
 
-# Same as above, but always from the unmodified baseline weights — used by
-# the footer to show the "before" side of a penalty escalation.
+# Baseline (no luck) — used by the footer for the "before" column.
 func category_percentages_baseline() -> Dictionary:
-	return _weights_to_percentages(category_weights())
+	return _weights_to_percentages(_curve_odds_as_probabilities(curve_base_t()))
 
 
 # Human-readable luck tag for the card currently on screen.
@@ -335,16 +368,6 @@ func current_round() -> int:
 		value = mini(value, SaveManager.get_match_max_rounds())
 	return value
 
-
-func _effective_round() -> int:
-	if players.is_empty():
-		return 1
-	# Integer division is intentional — we want the whole-round count.
-	@warning_ignore("integer_division")
-	var r := cards_played / players.size()
-	return 1 + r
-
-
 func _has_unused(kind: String) -> bool:
 	if is_deck_recycling():
 		return DataManager.get_prompts_by_type(kind).size() > 0
@@ -359,21 +382,30 @@ func _used_ids_for(kind: String) -> Dictionary:
 
 func _pick_prompt(kind: String, category: String) -> Dictionary:
 	var pool := DataManager.get_prompts_by_type(kind)
+	if pool.is_empty():
+		return {}
 	var used := _used_ids_for(kind)
-	var recycle := is_deck_recycling()
 
-	# Preferred: matching category (unused in default mode, any in endless/limited)
+	# Shuffle-bag behaviour. In recycling modes (endless / limited) the
+	# deck is treated as a bag we draw from without replacement; once
+	# every card has been drawn the bag refreshes and we start a new
+	# loop. In default mode this branch never fires — the game ends
+	# before the deck can exhaust.
+	if used.size() >= pool.size() and is_deck_recycling():
+		used.clear()
+
+	# Preferred: matching category, unused
 	var candidates: Array[int] = []
 	for i in pool.size():
-		if not recycle and used.has(i):
+		if used.has(i):
 			continue
 		if pool[i].get("category", "") == category:
 			candidates.append(i)
 
-	# Fallback: any card (unused in default mode)
+	# Fallback: any unused card
 	if candidates.is_empty():
 		for i in pool.size():
-			if not recycle and used.has(i):
+			if used.has(i):
 				continue
 			candidates.append(i)
 
@@ -381,8 +413,7 @@ func _pick_prompt(kind: String, category: String) -> Dictionary:
 		return {}
 
 	var idx: int = candidates[randi() % candidates.size()]
-	if not recycle:
-		used[idx] = true
+	used[idx] = true
 	return pool[idx]
 
 
@@ -450,20 +481,18 @@ func _record_type_streak(player: String, type: String) -> void:
 
 
 func _roll_category() -> String:
-	var weights := category_weights()
-
-	# Consume any pending penalty escalation for the current player.
 	var player := current_player()
 	var bonus: float = _pending_escalation.get(player, 0.0)
-	if bonus != 0.0:
-		weights = _apply_escalation(weights, bonus)
-		_pending_escalation.erase(player)
 
-	# Snapshot what we actually rolled with. The footer reads these so
-	# the odds line reflects the penalty applied to the current card,
-	# not just the unmodified baseline.
+	# Snapshot the weights actually used for this card, luck included.
+	# `category_weights` reads `_pending_escalation` internally.
+	var weights := category_weights()
 	_last_rolled_weights = weights.duplicate()
 	_last_rolled_bonus = bonus
+
+	# Consume the pending bonus — it applies only to this one draw.
+	if bonus != 0.0:
+		_pending_escalation.erase(player)
 
 	var total := 0.0
 	for w in weights.values():
@@ -477,17 +506,3 @@ func _roll_category() -> String:
 		if r <= acc:
 			return cat
 	return "sober"
-
-
-# Shift weights according to the bonus. Positive bonus → harder categories
-# (drunk/wasted) get more weight; negative → easier (sober/tipsy) do.
-# The "shape" of the shift is asymmetric on purpose: wasted/sober move twice
-# as much as drunk/tipsy, so the extremes feel stronger than the middle.
-func _apply_escalation(weights: Dictionary, bonus: float) -> Dictionary:
-	var shift := bonus * PENALTY_ESCALATION_UNIT
-	return {
-		"sober":  clampf(weights.get("sober",  0.4) - shift,       CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT),
-		"tipsy":  clampf(weights.get("tipsy",  0.3) - shift * 0.5, CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT),
-		"drunk":  clampf(weights.get("drunk",  0.2) + shift * 0.5, CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT),
-		"wasted": clampf(weights.get("wasted", 0.1) + shift,       CATEGORY_MIN_WEIGHT, CATEGORY_MAX_WEIGHT),
-	}

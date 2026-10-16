@@ -217,18 +217,24 @@ func _update_info() -> void:
 	#   endless  → ∞
 	#   limited  → Round X / Y     (matches how the user set the cap)
 	#   default  → N turns left    (one card = one turn)
-	var remaining := GameState.cards_remaining()
+	# Round indicator. Limited knows its total; default estimates one
+	# from the deck; endless has a fixed progression window.
+	var round_num := GameState.current_round()
 	var remaining_text: String
 	match SaveManager.get_game_mode():
 		"endless":
-			remaining_text = "∞"
+			remaining_text = "Round %d  ·  ∞" % round_num
 		"limited":
 			remaining_text = "Round %d / %d" % [
-				GameState.current_round(),
+				round_num,
 				SaveManager.get_match_max_rounds(),
 			]
 		_:
-			remaining_text = str(remaining) + " turns left"
+			# "of ~N" — the tilde flags the total as an estimate, since
+			# default mode ends when the deck empties rather than at a
+			# fixed round count.
+			var est := GameState.total_rounds_for_odds()
+			remaining_text = "Round %d of ~%d" % [round_num, est]
 
 	# Card label. In default mode we show "Card 03/48" — the current card
 	# number over the deck size. Endless mode (and, later, the planned
@@ -254,11 +260,12 @@ func _update_info() -> void:
 		c_drunk,  p_base.get("drunk", 0),
 		c_wasted, p_base.get("wasted", 0),
 	]
-	# Arrow only appears on an active card with an applied penalty.
-	# At game-over the snapshot still holds the last card's bonus but
-	# there's no next card, so we collapse back to baseline.
-	if p != p_base and not GameState.game_over:
-		var luck_tag := GameState.current_luck_label()
+	# Arrow appears whenever a penalty bonus was applied to the current
+	# card — even if the curve was clamped and the numbers came out the
+	# same as baseline. Otherwise the player loses all feedback that
+	# their penalty registered.
+	var luck_tag := GameState.current_luck_label()
+	if not luck_tag.is_empty() and not GameState.game_over:
 		odds_bb += "   ->   Player Luck [%s] [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]" % [
 			luck_tag,
 			c_sober,  p.get("sober", 0),

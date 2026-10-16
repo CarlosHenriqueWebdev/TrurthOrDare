@@ -56,6 +56,7 @@ func _build() -> void:
 	scroll.add_child(_cards_col)
 
 	_modal.set_content(col)
+	UiUtils.make_scroll_friendly(self)
 
 
 # Rebuild the card list from whatever DataManager currently holds.
@@ -85,6 +86,9 @@ func _populate() -> void:
 
 func open() -> void:
 	_populate()
+	# _populate rebuilds the card list; walk the tree again so the fresh
+	# PreviewCards don't block the scroll drag on mobile.
+	UiUtils.make_scroll_friendly(self)
 	_modal.open()
 
 

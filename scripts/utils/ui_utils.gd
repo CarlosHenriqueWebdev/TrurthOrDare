@@ -33,3 +33,35 @@ static func make_clickable(node: Control, on_click: Callable, play_sound := true
 				AudioManager.play_click()
 			on_click.call()
 	)
+
+
+# Recursively reclassify a subtree so touch-dragging works inside a
+# ScrollContainer. In Godot, any Control with mouse_filter = STOP
+# consumes drag events before they reach the scroll — even a plain
+# Label. This walks the tree and downgrades decorative nodes:
+#
+#   Label / RichTextLabel / TextureRect / ColorRect / Panel → IGNORE
+#   Container / PanelContainer / BorderedBox                → PASS
+#
+# Interactive Controls (Button, LineEdit, etc.) are left untouched —
+# they aren't Containers, so they keep their default STOP filter and
+# still consume clicks as expected.
+#
+# ScrollContainers are skipped so we never accidentally disable their
+# own drag handling. Call this once, after the UI is fully built.
+static func make_scroll_friendly(root: Node) -> void:
+	for child in root.get_children():
+		if child is ScrollContainer:
+			# Leave the ScrollContainer's own filter alone (it needs
+			# STOP to receive drag events) but DO descend into its
+			# content — otherwise the boxes and labels inside stay
+			# STOP and eat the drag before it reaches the scroll.
+			make_scroll_friendly(child)
+			continue
+		if child is Label or child is RichTextLabel \
+				or child is TextureRect or child is ColorRect \
+				or (child is Panel and not (child is PanelContainer)):
+			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		elif child is Container:
+			child.mouse_filter = Control.MOUSE_FILTER_PASS
+		make_scroll_friendly(child)

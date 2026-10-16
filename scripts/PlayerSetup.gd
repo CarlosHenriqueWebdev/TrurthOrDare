@@ -33,6 +33,7 @@ func _ready() -> void:
 	_players = SaveManager.get_players()
 	_build()
 	UiUtils.connect_click_sounds(self)
+	UiUtils.make_scroll_friendly(self)
 	_refresh()
 
 
@@ -235,6 +236,10 @@ func _refresh() -> void:
 	# first screen focused on the one primary action: adding players.
 	if _config_box:
 		_config_box.visible = _players.size() >= 2
+	# Re-run the scroll walker: _rebuild_player_rows just created fresh
+	# PlayerRow nodes, which default to MOUSE_FILTER_STOP and would
+	# otherwise eat drags aimed at the ScrollContainer.
+	UiUtils.make_scroll_friendly(self)
 
 
 func _rebuild_player_rows() -> void:
@@ -539,7 +544,6 @@ func _build_config_box() -> BorderedBox:
 	_style_line_edit_bare(_max_turns_input)
 	_max_turns_input.text_submitted.connect(_on_max_turns_submitted)
 	_max_turns_input.focus_exited.connect(_on_max_turns_blur)
-	_max_turns_input.text_changed.connect(_on_max_turns_changed)
 	limit_row.add_child(_max_turns_input)
 
 	# Quick-pick presets — same trick as the CSV CLEAR/UPLOAD row, just
@@ -624,32 +628,26 @@ func _on_max_turns_blur() -> void:
 
 func _commit_max_turns(text: String) -> void:
 	var raw := text.strip_edges()
-	var n := raw.to_int() if raw.is_valid_int() else 0
-	if n <= 0:
-		n = 5
+	# Validate on submit rather than filtering on every keystroke.
+	# LineEdit's internal state doesn't survive a mid-signal rewrite
+	# cleanly (crashes reported with certain inputs like "~~"), so we
+	# let the field hold whatever and only push back if it's invalid.
+	if not raw.is_valid_int() or raw.to_int() <= 0:
+		AudioManager.play_error()
+		ToastManager.show_message("Enter a whole number (1+)", 2.0, true)
+		_max_turns_input.text = str(SaveManager.get_match_max_rounds())
+		_punch(_max_turns_input)
+		return
+	var n := raw.to_int()
 	SaveManager.set_match_max_rounds(n)
 	_max_turns_input.text = str(n)
-
-
-# LineEdit has no numeric mode in Godot 4, so we sanitise on the
-# text_changed signal. Blocking signals while we rewrite prevents an
-# infinite re-trigger loop.
-func _on_max_turns_changed(new_text: String) -> void:
-	var filtered := ""
-	for c in new_text:
-		if c >= "0" and c <= "9":
-			filtered += c
-	if filtered == new_text:
-		return
-	_max_turns_input.set_block_signals(true)
-	_max_turns_input.text = filtered
-	_max_turns_input.caret_column = filtered.length()
-	_max_turns_input.set_block_signals(false)
+	AudioManager.play_success()
 
 
 func _on_preset_rounds(value: int) -> void:
 	SaveManager.set_match_max_rounds(value)
 	_max_turns_input.text = str(value)
+	AudioManager.play_success()
 
 
 func _style_line_edit_bare(le: LineEdit) -> void:
