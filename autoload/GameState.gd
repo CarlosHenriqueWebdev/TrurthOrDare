@@ -246,6 +246,19 @@ func cards_remaining() -> int:
 		+ (DataManager.dares.size() - _used_dare_ids.size())
 
 
+# Current round number, 1-based. Clamped to the limited-mode cap so the
+# game-over state doesn't overshoot the displayed max by one.
+func current_round() -> int:
+	if players.is_empty():
+		return 1
+	@warning_ignore("integer_division")
+	var r := cards_played / players.size()
+	var value := 1 + r
+	if SaveManager.get_game_mode() == "limited":
+		value = mini(value, SaveManager.get_match_max_rounds())
+	return value
+
+
 func _effective_round() -> int:
 	if players.is_empty():
 		return 1

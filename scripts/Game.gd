@@ -208,10 +208,22 @@ func _update_info() -> void:
 	var green := Design.GLOBAL_CONTENT_BORDER.to_html(false)
 	var orange := Design.SEVEN.to_html(false)
 
-	# One card drawn = one player's turn. "Rounds" would be a full lap around
-	# the table (players.size() turns), but the counter here is per-turn.
+	# Footer right-hand text. Three modes, three messages:
+	#   endless  → ∞
+	#   limited  → Round X / Y     (matches how the user set the cap)
+	#   default  → N turns left    (one card = one turn)
 	var remaining := GameState.cards_remaining()
-	var remaining_text := "∞" if remaining < 0 else str(remaining) + " turns left"
+	var remaining_text: String
+	match SaveManager.get_game_mode():
+		"endless":
+			remaining_text = "∞"
+		"limited":
+			remaining_text = "Round %d / %d" % [
+				GameState.current_round(),
+				SaveManager.get_match_max_rounds(),
+			]
+		_:
+			remaining_text = str(remaining) + " turns left"
 
 	# Card label. In default mode we show "Card 03/48" — the current card
 	# number over the deck size. Endless mode (and, later, the planned
@@ -260,7 +272,13 @@ func _make_game_over_panel() -> BorderedBox:
 	var box := BorderedBox.create(18)
 
 	var title := Label.new()
-	title.text = "ALL CARDS PLAYED"
+	# Default mode ends when the deck runs out; limited ends at the round cap.
+	# Endless never reaches this panel but we default sensibly just in case.
+	match SaveManager.get_game_mode():
+		"limited":
+			title.text = "ROUND LIMIT REACHED"
+		_:
+			title.text = "ALL CARDS PLAYED"
 	Design.apply_label(title, 22)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_with_margins(title, 24, 32, 24, 8)
