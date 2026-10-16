@@ -207,11 +207,27 @@ func _update_info() -> void:
 	var green := Design.GLOBAL_CONTENT_BORDER.to_html(false)
 	var orange := Design.SEVEN.to_html(false)
 
+	# One card drawn = one player's turn. "Rounds" would be a full lap around
+	# the table (players.size() turns), but the counter here is per-turn.
 	var remaining := GameState.cards_remaining()
-	var remaining_text := "∞" if remaining < 0 else str(remaining) + " rounds left"
+	var remaining_text := "∞" if remaining < 0 else str(remaining) + " turns left"
+
+	# Card label. In default mode we show "Card 03/48" — the current card
+	# number over the deck size. Endless mode (and, later, the planned
+	# "limited" mode) recycles the deck, so the total is meaningless and
+	# we just show "Card 03".
+	# cards_played is 0-based internally; display it 1-based.
+	var card_num := GameState.cards_played + 1
+	var card_label := "Card %02d" % card_num
+	if not GameState.is_endless():
+		var deck_max := DataManager.truths.size() + DataManager.dares.size()
+		# Clamp so the game-over state shows the last card, not one past it.
+		card_num = mini(card_num, deck_max)
+		card_label = "Card %02d/%d" % [card_num, deck_max]
+
 	_info_rich.text = \
-		"Card %02d   Chances [color=#%s]T %d%%[/color] / [color=#%s]D %d%%[/color]\n" % [
-			GameState.cards_played, green, t, orange, d,
+		"%s   Chances [color=#%s]T %d%%[/color] / [color=#%s]D %d%%[/color]\n" % [
+			card_label, green, t, orange, d,
 		] + \
 		"Odds [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]   (%s)" % [
 			c_sober,  p.get("sober", 0),
