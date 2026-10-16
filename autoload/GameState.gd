@@ -50,6 +50,7 @@ var _last_type_by_player: Dictionary = {}   # player -> "truth" | "dare"
 var _same_type_streak: Dictionary = {}      # player -> consecutive count of same type
 var _pending_escalation: Dictionary = {}    # player -> float bonus, consumed on next draw
 var _last_rolled_weights: Dictionary = {}   # weights used for the currently displayed card
+var _last_rolled_bonus: float = 0.0         # escalation bonus applied to the current card
 
 
 func start_game(player_names: Array[String]) -> void:
@@ -64,6 +65,7 @@ func start_game(player_names: Array[String]) -> void:
 	_same_type_streak.clear()
 	_pending_escalation.clear()
 	_last_rolled_weights.clear()
+	_last_rolled_bonus = 0.0
 	for p in players:
 		_player_stats[p] = {"truths": 0, "dares": 0}
 	_roll_prompt()
@@ -176,6 +178,19 @@ func category_percentages() -> Dictionary:
 # the footer to show the "before" side of a penalty escalation.
 func category_percentages_baseline() -> Dictionary:
 	return _weights_to_percentages(category_weights())
+
+
+# Human-readable luck tag for the card currently on screen.
+# Empty string when no penalty was applied.
+#   bonus +1.0  →  "-2"   (level 1 penalty, easy → much harder next card)
+#   bonus +0.5  →  "-1"
+#   bonus -0.5  →  "+1"   (level 4 penalty, harsh → easier next card)
+#   bonus  0.0  →  ""
+func current_luck_label() -> String:
+	if _last_rolled_bonus == 0.0:
+		return ""
+	var luck := int(round(-_last_rolled_bonus * 2.0))
+	return "+%d" % luck if luck > 0 else str(luck)
 
 
 func _weights_to_percentages(weights: Dictionary) -> Dictionary:
@@ -334,10 +349,11 @@ func _roll_category() -> String:
 		weights = _apply_escalation(weights, bonus)
 		_pending_escalation.erase(player)
 
-	# Snapshot the weights we actually rolled with. The footer reads this
-	# so the odds line reflects any penalty escalation that was applied
-	# to the current card, not just the unmodified baseline.
+	# Snapshot what we actually rolled with. The footer reads these so
+	# the odds line reflects the penalty applied to the current card,
+	# not just the unmodified baseline.
 	_last_rolled_weights = weights.duplicate()
+	_last_rolled_bonus = bonus
 
 	var total := 0.0
 	for w in weights.values():

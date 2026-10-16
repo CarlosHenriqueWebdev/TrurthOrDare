@@ -29,11 +29,25 @@ func _build() -> void:
 
 	col.add_child(_make_title_row())
 
+	# Long-form luck explainer. Autowrap is on so it wraps on narrow
+	# screens instead of forcing the modal wider.
 	var hint := Label.new()
-	hint.text = "Max %d groups · %d options each" % [
+	hint.text = (
+		"Max %d groups · %d options each\n"
+		+ "\n"
+		+ "LUCK SYSTEM\n"
+		+ "Passing stores a temporary luck modifier that applies to your next card:\n"
+		+ "  -2 luck (easiest penalty)   ->  next card much harder\n"
+		+ "  -1 luck                     ->  next card harder\n"
+		+ "   0 luck                     ->  no change\n"
+		+ "  +1 luck (harshest penalty)  ->  next card easier\n"
+		+ "Harder = more Drunk/Wasted prompts. Easier = more Sober/Tipsy."
+	) % [
 		Design.MAX_PENALTY_GROUPS,
 		Design.MAX_PENALTY_OPTIONS_GROUP,
 	]
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	Design.apply_label(hint, 10, Design.GRAY)
 	col.add_child(hint)
 	col.add_child(_spacer(4))

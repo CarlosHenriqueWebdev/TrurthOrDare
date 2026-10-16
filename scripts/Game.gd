@@ -237,7 +237,9 @@ func _update_info() -> void:
 		c_wasted, p_base.get("wasted", 0),
 	]
 	if p != p_base:
-		odds_bb += "   ->   Player Luck [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]" % [
+		var luck_tag := GameState.current_luck_label()
+		odds_bb += "   ->   Player Luck [%s] [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]" % [
+			luck_tag,
 			c_sober,  p.get("sober", 0),
 			c_tipsy,  p.get("tipsy", 0),
 			c_drunk,  p.get("drunk", 0),
