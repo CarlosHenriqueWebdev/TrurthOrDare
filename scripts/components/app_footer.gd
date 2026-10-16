@@ -53,18 +53,16 @@ func _build(buttons: Array) -> void:
 
 		# Optional hint label above the button. Used by Home's Continue
 		# Game button to warn that Start Game discards the session.
+		# No explicit spacer needed — the col's separation (BUTTON_GAP)
+		# already puts 16px between this label and the button below it.
 		if not hint.is_empty():
 			var hint_lbl := Label.new()
 			hint_lbl.text = hint
 			hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			hint_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			Design.apply_label(hint_lbl, 10, Design.ERROR_TEXT)
+			Design.apply_label(hint_lbl, 14, Design.ERROR_TEXT)
 			col.add_child(hint_lbl)
-			var gap := Control.new()
-			gap.custom_minimum_size = Vector2(0, 12)
-			gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			col.add_child(gap)
 
 		var btn := StyledButton.create(text, color, icon)
 		btn.pressed.connect(func(): button_pressed.emit(id))

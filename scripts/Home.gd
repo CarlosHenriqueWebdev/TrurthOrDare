@@ -30,7 +30,7 @@ func _build() -> void:
 			"text": "CONTINUE GAME",
 			"color": Design.EIGHT,
 			"icon": Design.ICON_CONTINUE,
-			"hint": "Starting a new game will erase this session.",
+			"hint": "Clicking new game will erase this session.",
 		})
 
 	footer_buttons.append({
@@ -83,6 +83,12 @@ func _on_footer_button(id: String) -> void:
 		"preview":
 			_preview_modal.open()
 		"start":
+			# Starting a new game erases any resumable session the moment
+			# the user commits to it — before they even reach PlayerSetup.
+			# This closes the "NEW GAME → change settings → logo Home →
+			# CONTINUE" loophole where mid-flow setting changes would leak
+			# into a resumed session.
+			SessionState.clear()
 			Navigation.go_to(Navigation.PLAYER_SETUP)
 
 
