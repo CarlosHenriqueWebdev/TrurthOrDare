@@ -37,7 +37,10 @@ func _build_card(kind: String, text: String, category: String) -> void:
 
 	# Quoted prompt (markup-aware, left-aligned)
 	var rich := RichTextLabel.new()
-	rich.text = "\u201c" + text + "\u201d"
+	# Straight double quotes for ASCII safety. The original curly quotes
+	# (U+201C / U+201D) render fine on most fonts but not all — same class
+	# of problem as the luck tag hyphen.
+	rich.text = "\"" + text + "\""
 	rich.fit_content = true
 	rich.scroll_active = false
 	rich.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
