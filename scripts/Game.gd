@@ -241,7 +241,7 @@ func _update_info() -> void:
 	var remaining_text: String
 	match SaveManager.get_game_mode():
 		"endless":
-			remaining_text = "Round %d  ·  ∞" % round_num
+			remaining_text = "Round %d / endless" % round_num
 		"limited":
 			remaining_text = "Round %d / %d" % [
 				round_num,
@@ -284,7 +284,8 @@ func _update_info() -> void:
 	# their penalty registered.
 	var luck_tag := GameState.current_luck_label()
 	if not luck_tag.is_empty() and not GameState.game_over:
-		odds_bb += "   ->   Player Luck [%s] [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]" % [
+		# Plain "=" separator: no Unicode, reads naturally, always renders.
+		odds_bb += "   =   Player Luck [%s] [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color] / [color=#%s]%d[/color]" % [
 			luck_tag,
 			c_sober,  p.get("sober", 0),
 			c_tipsy,  p.get("tipsy", 0),

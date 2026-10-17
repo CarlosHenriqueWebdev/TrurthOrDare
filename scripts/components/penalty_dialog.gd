@@ -39,7 +39,7 @@ func _build() -> void:
 	# Design.EIGHT lightened so it reads on the black background — same
 	# trick ODDS_LIGHTEN uses for the category colours.
 	var limits := Label.new()
-	limits.text = "Max %d groups · %d options each" % [
+	limits.text = "Max %d groups, %d options each" % [
 		Design.MAX_PENALTY_GROUPS,
 		Design.MAX_PENALTY_OPTIONS_GROUP,
 	]
@@ -227,9 +227,11 @@ func _make_option_row(group_name: String, label: String, level: int, index: int)
 # nothing, so the "no effect" case is the empty string.
 #   1 → "−2 luck"   2 → "−1 luck"   3 → ""   4 → "+1 luck"
 static func _level_luck_text(level: int) -> String:
+	# ASCII only — the Unicode MINUS SIGN (U+2212) renders as a tofu box
+	# on some Windows font fallbacks. Plain hyphen-minus is universal.
 	match level:
-		1: return "−2 luck"
-		2: return "−1 luck"
+		1: return "-2 luck"
+		2: return "-1 luck"
 		4: return "+1 luck"
 		_: return ""
 
